@@ -36,6 +36,21 @@
 
 ## 기록
 
+## 2026-09-08 — CtrlOne macOS 빌드 지원
+
+- **스위트:** `—` (재패키지 시 `Mac/`에 포함)
+- **대상:** CtrlOne, 빌드스크립트
+- **유형:** 기능 | 배포
+
+### 내용
+- Release 고정 `win-x64`/`WinExe` 제거 → RID별 게시. macOS `open` 브라우저, 뮤텍스 이름 정리, AllocConsole는 Windows만
+- `package-portable-macos.sh` → arm64/x64 (`Builded/CtrlOne/CtrlOne-macOS-*`, UI 임베드)
+- 스위트 빌드 스크립트 Mac 번들에 CtrlOne 포함
+
+### 확인
+- [x] `dotnet build` / macOS publish
+- [ ] HyperDeck 실기 (로컬 네트워크 권한)
+
 ## 2026-09-08 — FileChecker macOS 빌드 지원
 
 - **스위트:** `—` (재패키지 시 `Mac/`에 포함)

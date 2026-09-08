@@ -77,6 +77,10 @@ fi
 rm -rf "$CO_STAGE"
 zip_dir "$CO_DEST/CtrlOne-Windows-x64" "$CO_DEST/CtrlOne-Windows-x64-$STAMP.zip"
 
+echo "== CtrlOne macOS =="
+export CTRLONE_BUILD_DIR="$CO_DEST"
+bash "$ROOT/CtrlOne/package-portable-macos.sh"
+
 # --- FileChecker ---
 echo "== FileChecker =="
 FC_DEST="$OUT/FileChecker"
@@ -196,6 +200,8 @@ cp -R "$WL_DEST/WorkLog-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$SR_PORTABLE" "$BUNDLE_ROOT/Windows/"
 
 # Mac payloads (있는 것만)
+[[ -d "$CO_DEST/CtrlOne-macOS-arm64" ]] && cp -R "$CO_DEST/CtrlOne-macOS-arm64" "$BUNDLE_ROOT/Mac/"
+[[ -d "$CO_DEST/CtrlOne-macOS-x64" ]] && cp -R "$CO_DEST/CtrlOne-macOS-x64" "$BUNDLE_ROOT/Mac/"
 [[ -d "$OUT/WorkLog/WorkLog-macOS-arm64.app" ]] && cp -R "$OUT/WorkLog/WorkLog-macOS-arm64.app" "$BUNDLE_ROOT/Mac/"
 [[ -d "$OUT/WorkLog/WorkLog-macOS-x64.app" ]] && cp -R "$OUT/WorkLog/WorkLog-macOS-x64.app" "$BUNDLE_ROOT/Mac/"
 [[ -d "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" ]] && cp -R "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" "$BUNDLE_ROOT/Mac/"
@@ -210,12 +216,13 @@ macOS 배포본
 ============
 
 포함
+- CtrlOne-macOS-arm64 / …-x64 (5177)
 - WorkLog-macOS-arm64.app / WorkLog-macOS-x64.app (17822)
 - BroadcastingSchedule-macOS-arm64 / …-x64 (17821)
 - FileChecker-macOS-arm64 / …-x64 (5187)
 
 미포함
-- CtrlOne, ScheduleReader (Windows만)
+- ScheduleReader (Windows만)
 
 Gatekeeper: 우클릭 → 열기, 또는 xattr -dr com.apple.quarantine <앱>
 EOF
@@ -226,7 +233,7 @@ build: $(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['build'
 label: $LABEL
 stamp: $STAMP
 Apps:
-- CtrlOne
+- CtrlOne (Windows + macOS)
 - FileChecker (Windows + macOS)
 - ScheduleDataManager (Windows + macOS)
 - WorkLog (Windows + macOS)
@@ -239,7 +246,7 @@ cat > "$BUNDLE_ROOT/README.txt" <<EOF
 폴더 구성
 ---------
 - Windows\\   … Windows x64 포터블 앱
-- Mac\\       … macOS (WorkLog, ScheduleDataManager, FileChecker)
+- Mac\\       … macOS (CtrlOne, WorkLog, ScheduleDataManager, FileChecker)
 - Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
 - VERSION.txt
 

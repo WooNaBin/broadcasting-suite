@@ -193,6 +193,8 @@ function New-SuiteBundleZip {
 
     # macOS 산출물이 Builded 아래에 있으면 Mac\ 로 복사
     $macCandidates = @(
+        (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-arm64'),
+        (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-x64'),
         (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64.app'),
         (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64.app'),
         (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-arm64'),
@@ -220,8 +222,8 @@ Mac에서 scripts/Build-BroadcastApps.sh 또는 각 앱 package-*-macos.sh 로 �
         Write-Utf8NoBom $macMarker @"
 macOS 배포본
 ============
-WorkLog / ScheduleDataManager / FileChecker (arm64·x64)
-CtrlOne·ScheduleReader 는 Windows만.
+WorkLog / ScheduleDataManager / FileChecker / CtrlOne (arm64·x64)
+ScheduleReader 는 Windows만.
 Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <앱>
 "@.TrimEnd()
     }
