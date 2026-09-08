@@ -36,9 +36,28 @@
 
 ## 기록
 
+## 2026-09-08 — 스위트 1.1.0.1 배포 빌드 (TODO 일괄)
+
+- **스위트:** `1.1.0.1_20260908`
+- **대상:** CtrlOne, ScheduleDataManager, WorkLog, 빌드스크립트, 문서
+- **유형:** 배포 | 기능 | 수정
+
+### 내용
+- `#11` SDM 일괄 일정 입력 다이얼로그
+- `#21`/`#22` WorkLog 프로필 PIN + 인쇄 템플릿 접두 제거·시트 다듬기
+- `#43` CtrlOne 수신 버퍼 상한·슬롯 3+ UI
+- `#63`/`#64` 통합 zip `Windows/`·`Mac/` 분리 + `Install-BroadcastApps`
+- macOS용 `scripts/Build-BroadcastApps.sh` 추가 (pwsh 미가용 시)
+- 통합 zip: `Builded/BroadcastingApp_1.1.0.1_20260908.zip`
+
+### 확인
+- [x] Mac에서 bash 스위트 빌드 (win-x64 크로스 퍼블리시)
+- [ ] 방송실 Windows에서 설치·실행 스모크
+- [ ] `#2` NAS 세 앱 동시 접속 실기 (보류)
+
 ## 2026-09-08 — CtrlOne #43 슬롯·버퍼 + 빌드 #63/#64 Windows/Mac·설치
 
-- **스위트:** `—` (재빌드 시 반영)
+- **스위트:** `1.1.0.1_20260908`
 - **대상:** CtrlOne, 빌드스크립트, 문서
 - **유형:** 기능 | 문서
 
@@ -49,13 +68,13 @@
 - PROJECTS / DEPLOY-CHECKLIST 폴더 안내
 
 ### 확인
-- [ ] CtrlOne Release 빌드
-- [ ] `Build-BroadcastApps` 통합 zip 레이아웃 확인
+- [x] CtrlOne Release 빌드
+- [x] 통합 zip `Windows/`·`Mac/` 레이아웃
 - [ ] 3슬롯 장비 실기 모니터링
 
 ## 2026-09-08 — WorkLog #21 PIN · #22 인쇄 다듬기
 
-- **스위트:** `—`
+- **스위트:** `1.1.0.1_20260908`
 - **대상:** WorkLog
 - **유형:** 기능 | 수정 | 문서
 
@@ -65,13 +84,13 @@
 - `docs/schema.md` profiles.pin 스키마 반영
 
 ### 확인
-- [ ] 로컬 실행 (PIN 설정·검증·인쇄 미리보기)
+- [x] 스위트 빌드 포함
+- [ ] 방송실에서 PIN·인쇄 실기
 - [ ] NAS 동시 접속 (해당 시)
-- [ ] `Build-BroadcastApps.bat` 빌드
 
 ## 2026-09-08 — SDM 일괄 일정 입력 (#11)
 
-- **스위트:** `—` (재빌드 권장)
+- **스위트:** `1.1.0.1_20260908`
 - **대상:** ScheduleDataManager
 - **유형:** 기능
 
@@ -81,9 +100,9 @@
 - 제목 있는 행만 저장, 시작===종료면 하루 일정, `saveLocal` + `render`
 
 ### 확인
-- [ ] 로컬 실행
+- [x] 스위트 빌드 포함
+- [ ] 방송실에서 일괄 입력 실기
 - [ ] NAS 동시 접속 (해당 시)
-- [ ] `Build-BroadcastApps.bat` 빌드
 
 ## 2026-09-08 — 스위트 1.0.1.1 배포 빌드
 

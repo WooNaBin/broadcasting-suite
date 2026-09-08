@@ -42,3 +42,7 @@ Desktop.ini
 *.user
 *.suo
 .DS_Store
+
+# local build helpers
+/tools/
+
