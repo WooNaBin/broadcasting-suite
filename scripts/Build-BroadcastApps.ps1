@@ -538,16 +538,38 @@ if errorlevel 1 (
 chcp 65001 >nul
 cd /d "%~dp0"
 echo [ScheduleReader] Preparing venv...
-where python >nul 2>&1
-if errorlevel 1 (
-  echo Python not found in PATH. Install Python 3.11+ and retry.
+
+set "PYEXE="
+where py >nul 2>&1
+if not errorlevel 1 (
+  for %%V in (3.14 3.13 3.12 3.11 3) do (
+    if not defined PYEXE (
+      py -%%V -c "import sys" >nul 2>&1
+      if not errorlevel 1 set "PYEXE=py -%%V"
+    )
+  )
+)
+if not defined PYEXE (
+  where python >nul 2>&1
+  if not errorlevel 1 (
+    python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>&1
+    if not errorlevel 1 set "PYEXE=python"
+  )
+)
+if not defined PYEXE (
+  echo Python 3.11+ 를 찾을 수 없습니다.
+  echo Microsoft Store 앱 실행 별칭이 켜져 있으면 끄고, python.org 에서 설치하세요.
+  echo 설치 후 "Add python.exe to PATH" 를 체크하거나 py launcher 를 사용하세요.
   pause
   exit /b 1
 )
+
+echo Using: %PYEXE%
 if not exist ".venv\Scripts\python.exe" (
-  python -m venv .venv
+  %PYEXE% -m venv .venv
   if errorlevel 1 (
     echo Failed to create venv.
+    echo Store stub python 이 원인일 수 있습니다. py -3.11 로 다시 시도하세요.
     pause
     exit /b 1
   )
@@ -567,16 +589,18 @@ call "%~dp0serve.bat"
     Write-Utf8File -FilePath (Join-Path $portable 'Setup-And-Run.bat') -Content $setupBat
 
     $readmeDeploy = @'
-ScheduleReader deploy package
-=============================
+ScheduleReader 배포 패키지
+==========================
 
-1. Copy this folder to the target PC
-2. Install Python 3.11+ (python on PATH)
-3. Run Setup-And-Run.bat once (creates venv + pip install)
-4. Later runs: serve.bat
-5. Browser: http://127.0.0.1:17823
+1. 이 폴더를 대상 PC에 복사
+2. Python 3.11+ 설치 (python.org 권장, PATH 또는 py launcher)
+   - Windows "앱 실행 별칭"의 python.exe 는 끄세요 (Store stub 방지)
+3. Setup-And-Run.bat 실행 (최초 1회: venv + pip)
+4. 이후: serve.bat
+5. 브라우저: http://127.0.0.1:17823
 
-If models/ is missing, Korean OCR models download on first use.
+models/ 폴더가 있으면 OCR 모델이 포함됩니다 (용량 큼).
+없으면 첫 OCR 실행 시 한글 모델이 다운로드됩니다.
 '@
     Write-Utf8File -FilePath (Join-Path $portable 'README-DEPLOY.txt') -Content $readmeDeploy
 

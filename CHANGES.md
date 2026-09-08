@@ -36,7 +36,38 @@
 
 ## 기록
 
-## 2026-09-08 — 일괄 빌드·버전·통합 zip
+## 2026-09-08 — 스위트 1.0.1.1 배포 빌드
+
+- **스위트:** `1.0.1.1_20260908`
+- **대상:** 전 앱 + 메타 레포
+- **유형:** 배포
+
+### 내용
+- 첫 빌드(1.0.0.1) 이후 첫 수정분 버전 `1.0.1.1`
+- 통합 zip: `Builded\BroadcastingApp_1.0.1.1_20260908.zip`
+
+### 확인
+- [x] `Build-BroadcastApps.ps1 -Bump Build` (version 1.0.1)
+- [ ] 각 앱 GitHub push
+
+## 2026-09-08 — 방송실 TODO 일괄 처리 (높음·명확 보통)
+
+- **스위트:** `—` (재빌드 권장)
+- **대상:** CtrlOne, FileChecker, WorkLog, ScheduleDataManager, ScheduleReader, 빌드스크립트, 문서
+- **유형:** 수정 | 기능 | 문서
+
+### 내용
+- CtrlOne: DeviceStore/PresetStore 잠금·원자 저장, 슬롯 전환 UI 제거·파싱 분리(슬롯1), IP 변경, 로그 접두사, goodbye 8초
+- FileChecker: Recording 일정 JSON 동기화, 단일 실행·아이콘, 브라우저 자동 오픈
+- WorkLog: 오늘 이후 날짜 목록 숨김
+- SDM: 바로 연결하고 시작(autoEnter)
+- ScheduleReader Setup: py launcher + 한글 배포 안내
+- `docs/DEPLOY-CHECKLIST.md` (NAS 계정·포트)
+
+### 확인
+- [x] CtrlOne / FileChecker Release 빌드
+- [ ] 방송실 장비로 슬롯1·IP 변경 실기 확인
+- [ ] FileChecker Recording 동기화 실기 확인
 
 - **스위트:** `1.0.0.1_20260908`
 - **대상:** 빌드스크립트, 문서, 전 앱 배포 산출물
@@ -99,4 +130,5 @@
 - `README.md`, `.gitignore` 추가
 
 ### 확인
-- [x] 로컬 git init·원격 연결
+- [x] 로컬 git init·초기 커밋
+- [x] GitHub `WooNaBin/broadcasting-suite` 생성·push (`main`)

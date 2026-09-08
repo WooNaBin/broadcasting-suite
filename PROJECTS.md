@@ -11,6 +11,11 @@
 | [CHANGES.md](CHANGES.md) | 수정·배포 기록 |
 | `broadcast-suite.version.json` | 스위트 버전·build 번호 |
 
+### 커밋 메시지
+
+한글 제목은 **체언형**으로 짧게 (`로그인 기억 추가` O · `추가한다` X).  
+규칙: `.cursor/rules/commit-message-ko.mdc`
+
 | 폴더 | 역할 |
 |------|------|
 | **ScheduleDataManager** | 방송실 스케줄 관리 (NAS JSON R/W) |
@@ -139,6 +144,8 @@
 | 앱별 portable | 아래 표 |
 
 통합 zip 안에는 압축되지 않은 각 앱 폴더가 들어 있다 (`CtrlOne-Windows-x64`, `FileChecker-Windows-x64`, `BroadcastingSchedule-Windows-x64`, `WorkLog-Windows-x64`, `ScheduleReader-portable` + `VERSION.txt`).
+
+ScheduleReader 패키지의 `models/`는 OCR용으로 **용량이 클 수 있음**. 배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md).
 
 | 앱 | Builded 산출물 |
 |----|----------------|
