@@ -36,6 +36,21 @@
 
 ## 기록
 
+## 2026-09-08 — TODO #10 일괄 행추가 · #30 Mac NAS File exists
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager, FileChecker
+- **유형:** 수정
+
+### 내용
+- `#10` 일괄 입력 다이얼로그: 하단 액션이 flex에 눌려 클릭 불가하던 문제 수정. 행 추가 시 스크롤·포커스
+- `#30` FileChecker macOS SMB: 공유별 고정 마운트 포인트, 마운트 전 디렉터리 비우기, `File exists` 시 `umount -f` 재시도, Finder `/Volumes/<share>` 재사용
+
+### 확인
+- [x] FileChecker Release 빌드
+- [ ] SDM 일괄 입력 행 추가 UI
+- [ ] FileChecker Mac NAS 테스트
+
 ## 2026-09-08 — CtrlOne macOS 빌드 지원
 
 - **스위트:** `—` (재패키지 시 `Mac/`에 포함)
