@@ -96,6 +96,11 @@ fi
 rm -rf "$FC_STAGE"
 zip_dir "$FC_DEST/FileChecker-Windows-x64" "$FC_DEST/FileChecker-Windows-x64-$STAMP.zip"
 
+# FileChecker macOS (arm64 + x64)
+echo "== FileChecker macOS =="
+export FILECHECKER_BUILD_DIR="$FC_DEST"
+bash "$ROOT/FileChecker/package-portable-macos.sh"
+
 # --- ScheduleDataManager ---
 echo "== ScheduleDataManager =="
 export SCHEDULE_BUILD_DIR="$OUT/ScheduleDataManager"
@@ -189,11 +194,30 @@ cp -R "$FC_DEST/FileChecker-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$SDM_DEST/BroadcastingSchedule-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$WL_DEST/WorkLog-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$SR_PORTABLE" "$BUNDLE_ROOT/Windows/"
+
+# Mac payloads (있는 것만)
+[[ -d "$OUT/WorkLog/WorkLog-macOS-arm64.app" ]] && cp -R "$OUT/WorkLog/WorkLog-macOS-arm64.app" "$BUNDLE_ROOT/Mac/"
+[[ -d "$OUT/WorkLog/WorkLog-macOS-x64.app" ]] && cp -R "$OUT/WorkLog/WorkLog-macOS-x64.app" "$BUNDLE_ROOT/Mac/"
+[[ -d "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" ]] && cp -R "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" "$BUNDLE_ROOT/Mac/"
+[[ -d "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" ]] && cp -R "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" "$BUNDLE_ROOT/Mac/"
+[[ -d "$FC_DEST/FileChecker-macOS-arm64" ]] && cp -R "$FC_DEST/FileChecker-macOS-arm64" "$BUNDLE_ROOT/Mac/"
+[[ -d "$FC_DEST/FileChecker-macOS-x64" ]] && cp -R "$FC_DEST/FileChecker-macOS-x64" "$BUNDLE_ROOT/Mac/"
+
 cp "$ROOT/scripts/Install-BroadcastApps.ps1" "$BUNDLE_ROOT/"
 cp "$ROOT/scripts/Install-BroadcastApps.bat" "$BUNDLE_ROOT/"
 cat > "$BUNDLE_ROOT/Mac/README.txt" <<EOF
-macOS 배포본은 아직 포함되지 않았습니다.
-추후 Mac 빌드가 추가되면 이 폴더에 앱 폴더가 들어갑니다.
+macOS 배포본
+============
+
+포함
+- WorkLog-macOS-arm64.app / WorkLog-macOS-x64.app (17822)
+- BroadcastingSchedule-macOS-arm64 / …-x64 (17821)
+- FileChecker-macOS-arm64 / …-x64 (5187)
+
+미포함
+- CtrlOne, ScheduleReader (Windows만)
+
+Gatekeeper: 우클릭 → 열기, 또는 xattr -dr com.apple.quarantine <앱>
 EOF
 cat > "$BUNDLE_ROOT/VERSION.txt" <<EOF
 BroadcastingApp suite
@@ -203,9 +227,9 @@ label: $LABEL
 stamp: $STAMP
 Apps:
 - CtrlOne
-- FileChecker
-- ScheduleDataManager
-- WorkLog
+- FileChecker (Windows + macOS)
+- ScheduleDataManager (Windows + macOS)
+- WorkLog (Windows + macOS)
 - ScheduleReader
 EOF
 cat > "$BUNDLE_ROOT/README.txt" <<EOF
@@ -215,16 +239,18 @@ cat > "$BUNDLE_ROOT/README.txt" <<EOF
 폴더 구성
 ---------
 - Windows\\   … Windows x64 포터블 앱
-- Mac\\       … macOS용 (추후)
+- Mac\\       … macOS (WorkLog, ScheduleDataManager, FileChecker)
 - Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
 - VERSION.txt
 
-설치 (권장)
+설치 (권장, Windows)
 -----------
 1. zip 압축 해제
 2. Install-BroadcastApps.bat 실행
 3. 설치 폴더 선택
 4. Windows\\ 내용만 복사됨. 바탕화면 바로가기는 선택
+
+Mac은 Mac\\ 폴더의 앱을 직접 실행하세요.
 
 포트: Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
 EOF

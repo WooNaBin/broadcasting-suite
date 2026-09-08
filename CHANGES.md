@@ -36,6 +36,38 @@
 
 ## 기록
 
+## 2026-09-08 — FileChecker macOS 빌드 지원
+
+- **스위트:** `—` (재패키지 시 `Mac/`에 포함)
+- **대상:** FileChecker, 빌드스크립트
+- **유형:** 기능 | 배포
+
+### 내용
+- TFM `net10.0` (WinForms 제거). macOS: 브라우저 `open`, Finder `open -R`, NAS `mount_smbfs`
+- Windows: PowerShell 폴더 선택, WNet·1219 재사용 유지
+- `package-portable-macos.sh` → arm64/x64 portable (`Builded/FileChecker/FileChecker-macOS-*`)
+- `Build-BroadcastApps.sh` Mac 번들에 FileChecker 포함
+
+### 확인
+- [x] `dotnet build` / `package-portable-macos.sh`
+- [ ] 방송실 Mac에서 NAS 스캔·동기화 실기
+
+## 2026-09-08 — 스위트 1.1.0.2 macOS 산출물 포함
+
+- **스위트:** `1.1.0.2_20260908`
+- **대상:** WorkLog, ScheduleDataManager, 메타 패키지
+- **유형:** 배포
+
+### 내용
+- Mac 패키지 있는 앱만 빌드: WorkLog (arm64/x64 `.app`), ScheduleDataManager (arm64/x64 portable)
+- 통합 zip `Mac/`에 포함. CtrlOne·FileChecker·ScheduleReader는 Mac 패키지 없음
+- 산출물: `Builded/BroadcastingApp_1.1.0.2_20260908.zip`
+
+### 확인
+- [x] WorkLog `package-mac.sh` (arm64·x64)
+- [x] SDM `package-portable-macos.sh` + osx-x64
+- [ ] Gatekeeper/실기 실행
+
 ## 2026-09-08 — 스위트 1.1.0.1 배포 빌드 (TODO 일괄)
 
 - **스위트:** `1.1.0.1_20260908`

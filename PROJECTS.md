@@ -101,7 +101,7 @@
 |----|------|
 | ScheduleDataManager | .NET LocalBridge + 임베드 웹(vanilla JS) |
 | WorkLog | .NET LocalBridge / MacBridge + `www/` (+ 선택 `nas-api`) |
-| FileChecker | ASP.NET Core + `wwwroot` |
+| FileChecker | ASP.NET Core + `wwwroot` (Windows + macOS portable) |
 | CtrlOne | ASP.NET Core + SignalR + HyperDeck TCP |
 | ScheduleReader | Python FastAPI + OCR |
 

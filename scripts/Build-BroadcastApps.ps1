@@ -191,12 +191,40 @@ function New-SuiteBundleZip {
         Copy-Item $r.portable (Join-Path $windowsDir $leaf) -Recurse -Force
     }
 
-    # 향후 macOS 산출물이 있으면 Mac\ 로 복사 (현재는 빈 폴더 유지)
+    # macOS 산출물이 Builded 아래에 있으면 Mac\ 로 복사
+    $macCandidates = @(
+        (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64.app'),
+        (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64.app'),
+        (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-arm64'),
+        (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-x64'),
+        (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-arm64'),
+        (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-x64')
+    )
+    $macCopied = 0
+    foreach ($src in $macCandidates) {
+        if (Test-Path $src) {
+            $leaf = Split-Path $src -Leaf
+            Write-Host "  + Mac\$leaf"
+            Copy-Item $src (Join-Path $macDir $leaf) -Recurse -Force
+            $macCopied++
+        }
+    }
     $macMarker = Join-Path $macDir 'README.txt'
-    Write-Utf8NoBom $macMarker @"
-macOS 배포본은 아직 포함되지 않았습니다.
-추후 Mac 빌드가 추가되면 이 폴더에 앱 폴더가 들어갑니다.
+    if ($macCopied -eq 0) {
+        Write-Utf8NoBom $macMarker @"
+macOS 배포본이 없습니다.
+Mac에서 scripts/Build-BroadcastApps.sh 또는 각 앱 package-*-macos.sh 로 빌드하세요.
 "@.TrimEnd()
+    }
+    else {
+        Write-Utf8NoBom $macMarker @"
+macOS 배포본
+============
+WorkLog / ScheduleDataManager / FileChecker (arm64·x64)
+CtrlOne·ScheduleReader 는 Windows만.
+Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <앱>
+"@.TrimEnd()
+    }
 
     $versionTxt = @"
 BroadcastingApp suite
@@ -218,7 +246,7 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
 폴더 구성
 ---------
 - Windows\   … Windows x64 포터블 앱
-- Mac\       … macOS용 (추후)
+- Mac\       … macOS (WorkLog, ScheduleDataManager, FileChecker)
 - Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
 - VERSION.txt
 
