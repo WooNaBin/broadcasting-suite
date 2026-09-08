@@ -1,0 +1,44 @@
+# 방송실 메타 레포 — 앱 소스·빌드 산출물은 추적하지 않음
+
+# 독립 앱 레포 (각각 자체 .git)
+/CtrlOne/
+/FileChecker/
+/ScheduleDataManager/
+/ScheduleReader/
+/WorkLog/
+
+# 스위트 밖
+/ImgToText/
+
+# 빌드 산출물·임시
+/Builded/
+**/_stage/
+**/_build/
+**/_bundle_stage/
+publish/
+**/bin/
+**/obj/
+**/.vs/
+
+# Python / 로컬
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/models/
+**/output/
+**/input/
+
+# 설정·비밀
+**/.env
+**/.env.*
+**/devices.json
+**/presets.json
+**/data/settings.json
+**/data/schedules.json
+
+# OS / 에디터
+Thumbs.db
+Desktop.ini
+*.user
+*.suo
+.DS_Store
