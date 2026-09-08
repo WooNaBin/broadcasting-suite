@@ -36,6 +36,7 @@
 - [ ] `#2` `[버그]` `[보통]` `[공통]` 세 앱 동시 실행 + 접속/해제 반복 스모크 테스트 후, 남는 이슈를 이 목록에 추가
   - 메모: 실사용에서 발견한 것만 구체화. (계정 통일 안내는 `#1` 완료·체크리스트 반영)
   - 보류(2026-09-08): 방송실 NAS·Windows 실기 환경 필요. 코드 변경 없이 실기 후 이슈만 추가.
+  - 참고: `#90` 통합 브리지 도입 후 **브리지 경로**로 재스모크 권장.
 
 ### ScheduleDataManager `[SDM]`
 
@@ -71,6 +72,11 @@
 
 ## 완료
 
+- [x] `#90` `[개선]` `[높음]` `[공통]` NAS 통합 브리지 `BroadcastNasBridge` (2026-09-08)
+  - 포트 `17820` · mutex · 세션 5초 grace · `nas.json` · Temp/Permanent 마운트 캐시
+  - 시작 인덱스 + 경로 마법사(미연결 시 setup) · `/schedule` `/worklog` `/files` UI·API
+  - 런처·`sync-ui`·`Build-BroadcastApps` 연동. 단독 SDM/WL/FC exe는 레거시로 유지
+  - 계획: [docs/NAS-BRIDGE-PLAN.md](docs/NAS-BRIDGE-PLAN.md)
 - [x] `#10` `[버그]` `[높음]` `[SDM]` 일괄 입력 행 추가 — 다이얼로그 액션 `flex-shrink:0` + 행 추가 핸들러/스크롤 보강 (2026-09-08)
 - [x] `#30` `[버그]` `[높음]` `[FC]` Mac NAS `mount_smbfs File exists` — 고정 마운트 경로·빈 디렉터리 재준비·`/Volumes` 재사용·강제 umount (2026-09-08)
 - [x] `#43` `[개선]` `[낮음]` `[CO]` 수신 버퍼 상한(256KB), 슬롯 3개 이상 Dictionary·UI·데모 — 슬롯 선택은 모니터링만 (2026-09-08)

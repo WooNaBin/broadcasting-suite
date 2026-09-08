@@ -9,6 +9,7 @@
 | [PROJECTS.md](PROJECTS.md) | 프로젝트 개요·NAS·포트·빌드 |
 | [TODO.md](TODO.md) | **버그·개선 할 일** → 「방송실 TODO 해줘」로 일괄 작업 |
 | [CHANGES.md](CHANGES.md) | 수정·배포 기록 |
+| [docs/NAS-BRIDGE-PLAN.md](docs/NAS-BRIDGE-PLAN.md) | SDM·WL·FC 통합 NAS 브리지 설계 (`BroadcastNasBridge`) |
 | `broadcast-suite.version.json` | 스위트 버전·build 번호 |
 
 ### 커밋 메시지
@@ -18,9 +19,10 @@
 
 | 폴더 | 역할 |
 |------|------|
-| **ScheduleDataManager** | 방송실 스케줄 관리 (NAS JSON R/W) |
-| **WorkLog** | 일일 작업 일지 (NAS, 스케줄 읽기 + `_work_log` 쓰기) |
-| **FileChecker** | 렌더링 파일 존재 여부 체크 (로컬 + NAS 스캔) |
+| **BroadcastNasBridge** | **권장 진입점** — NAS 1회 연결 + 스케줄·일지·파일체크 (`17820`) |
+| **ScheduleDataManager** | 방송실 스케줄 관리 (NAS JSON R/W) — 단독 `17821` 레거시 |
+| **WorkLog** | 일일 작업 일지 — 단독 `17822` 레거시 |
+| **FileChecker** | 렌더링 파일 체크 — 단독 `5187` 레거시 |
 | **CtrlOne** | HyperDeck 등 방송 장비 TCP 제어 (NAS 무관) |
 | **ScheduleReader** | 스케줄 OCR → JSON (로컬; NAS 세션 관리 없음) |
 | **ImgToText** | 이미지→텍스트 보조 도구 |
@@ -30,13 +32,15 @@
 
 ## 형제 앱 (같은 NAS, 동시 실행)
 
-다음 세 앱은 **같은 PC에서 동시에** 실행될 수 있고, **같은 NAS 호스트**에 SMB로 붙는다.
+**권장:** `BroadcastNasBridge` 한 프로세스가 SMB를 소유하고 `/schedule` · `/worklog` · `/files`를 연다.  
+단독 exe(17821/17822/5187)는 레거시로 유지한다.
 
-| 앱 | 기본 포트 | 기본 공유 경로 | NAS 역할 |
-|----|-----------|----------------|----------|
-| ScheduleDataManager | `17821` | `Temp DATA\_data` | 스케줄 JSON·공문·백업 R/W |
-| WorkLog | `17822` | `Temp DATA\_data\_work_log` | 일지 R/W, 상위 `_data` 스케줄 **읽기만** |
-| FileChecker | `5187` (배포 bat) | `Permanent DATA\H264_mp4 DATA` | 미디어 파일 **열거/검색** |
+| 진입 | 기본 포트 | 기본 공유 경로 | NAS 역할 |
+|------|-----------|----------------|----------|
+| **BroadcastNasBridge** | `17820` | Temp + Permanent (마운트 캐시) | 계정 1 · 공유 ≤2 |
+| ScheduleDataManager (레거시) | `17821` | `Temp DATA\_data` | 스케줄 JSON·공문·백업 R/W |
+| WorkLog (레거시) | `17822` | `Temp DATA\_data\_work_log` | 일지 R/W, 상위 `_data` 스케줄 **읽기만** |
+| FileChecker (레거시) | `5187` | `Permanent DATA\H264_mp4 DATA` | 미디어 파일 **열거/검색** |
 
 ```text
 \\NAS\Temp DATA\_data\                 ← ScheduleDataManager R/W
@@ -85,11 +89,12 @@
 
 | 앱 | 포트 |
 |----|------|
-| ScheduleDataManager | 17821 |
-| WorkLog | 17822 |
+| **BroadcastNasBridge** | **17820** |
+| ScheduleDataManager (레거시) | 17821 |
+| WorkLog (레거시) | 17822 |
 | ScheduleReader | 17823 |
 | CtrlOne | 5177 |
-| FileChecker | 5187 (배포) / launchSettings는 개발용 |
+| FileChecker (레거시) | 5187 (배포) / launchSettings는 개발용 |
 
 겹치면 안 된다. WorkLog `docs/ports.md` 참고.
 
@@ -99,6 +104,7 @@
 
 | 앱 | 스택 |
 |----|------|
+| BroadcastNasBridge | ASP.NET Core · 통합 SMB · 허브/마법사 · `/schedule` `/worklog` `/files` |
 | ScheduleDataManager | .NET LocalBridge + 임베드 웹(vanilla JS) |
 | WorkLog | .NET LocalBridge / MacBridge + `www/` (+ 선택 `nas-api`) |
 | FileChecker | ASP.NET Core + `wwwroot` (Windows + macOS portable) |

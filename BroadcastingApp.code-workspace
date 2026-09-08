@@ -1,0 +1,36 @@
+{
+  "folders": [
+    {
+      "name": "방송실 스위트 (meta)",
+      "path": "."
+    },
+    {
+      "name": "CtrlOne",
+      "path": "CtrlOne"
+    },
+    {
+      "name": "FileChecker",
+      "path": "FileChecker"
+    },
+    {
+      "name": "ScheduleDataManager",
+      "path": "ScheduleDataManager"
+    },
+    {
+      "name": "WorkLog",
+      "path": "WorkLog"
+    },
+    {
+      "name": "BroadcastNasBridge",
+      "path": "BroadcastNasBridge"
+    },
+    {
+      "name": "ScheduleReader",
+      "path": "ScheduleReader"
+    }
+  ],
+  "settings": {
+    "git.autoRepositoryDetection": true,
+    "git.repositoryScanMaxDepth": 2
+  }
+}

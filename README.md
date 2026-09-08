@@ -7,6 +7,7 @@
 
 | 앱 | 역할 | 저장소 |
 |----|------|--------|
+| **BroadcastNasBridge** | NAS 통합 진입 (메타 레포 내) | (이 스위트) |
 | ScheduleDataManager | 스케줄 관리 (NAS) | https://github.com/WooNaBin/schedule-data-manager |
 | WorkLog | 일일 작업 일지 (NAS) | https://github.com/WooNaBin/WorkLog |
 | FileChecker | 렌더링 파일 체크 | https://github.com/WooNaBin/FileChecker |
@@ -24,6 +25,7 @@ Projects/                          ← 이 메타 레포 (또는 클론 루트)
   CHANGES.md
   Build-BroadcastApps.bat
   scripts/
+  BroadcastNasBridge/              ← 통합 NAS 브리지 (메타 레포에 포함)
   CtrlOne/                         ← git clone (별도 레포)
   FileChecker/
   ScheduleDataManager/

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NAS 설정 · BroadcastNasBridge</title>
+  <link rel="stylesheet" href="/css/hub.css" />
+</head>
+<body>
+  <main class="shell narrow">
+    <header class="hero">
+      <p class="eyebrow">경로 마법사</p>
+      <h1>NAS 연결</h1>
+      <p class="lede">기존 앱 기본 경로를 프리필합니다. Temp·Permanent 공유를 각각 마운트합니다.</p>
+    </header>
+
+    <form id="setup-form" class="form">
+      <label>NAS IP <input name="host" required placeholder="192.168.x.x" autocomplete="off" /></label>
+      <label>계정 <input name="username" required autocomplete="username" /></label>
+      <label>비밀번호 <input name="password" type="password" autocomplete="current-password" /></label>
+      <label class="check"><input name="rememberPassword" type="checkbox" checked /> 비밀번호 기억 (로컬 nas.json)</label>
+
+      <fieldset>
+        <legend>Temp DATA (스케줄·일지)</legend>
+        <label>공유명 <input name="tempShare" value="Temp DATA" /></label>
+        <label>스케줄 상대경로 <input name="scheduleRelativePath" value="_data" /></label>
+        <label>일지 상대경로 <input name="workLogRelativePath" value="_data/_work_log" /></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Permanent DATA (미디어)</legend>
+        <label>공유명 <input name="permanentShare" value="Permanent DATA" /></label>
+        <label>미디어 상대경로 <input name="mediaRelativePath" value="H264_mp4 DATA" /></label>
+        <label>로컬 폴더 (선택) <input name="localPath" placeholder="로컬 스캔 경로" /></label>
+        <label>스케줄 JSON 파일명 (선택) <input name="scheduleJsonFile" placeholder="예: 2026.json" /></label>
+      </fieldset>
+
+      <p id="setup-msg" class="msg" hidden></p>
+      <div class="actions">
+        <button type="submit">연결·저장</button>
+        <a class="ghost btn" href="/">시작으로</a>
+      </div>
+    </form>
+  </main>
+  <script src="/js/session.js"></script>
+  <script src="/js/setup.js"></script>
+</body>
+</html>

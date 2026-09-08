@@ -188,6 +188,29 @@ print("ScheduleReader staged", portable)
 PY
 zip_dir "$SR_PORTABLE" "$SR_DEST/ScheduleReader-portable-$STAMP.zip"
 
+# --- BroadcastNasBridge (통합 NAS) ---
+echo "== BroadcastNasBridge =="
+BNB_DEST="$OUT/BroadcastNasBridge"
+BNB_STAGE="$BNB_DEST/_stage"
+rm -rf "$BNB_STAGE"
+bash "$ROOT/BroadcastNasBridge/scripts/sync-ui.sh"
+publish_win "$ROOT/BroadcastNasBridge/BroadcastNasBridge.csproj" "$BNB_STAGE"
+mkdir -p "$BNB_DEST/BroadcastNasBridge-Windows-x64"
+cp -R "$BNB_STAGE"/* "$BNB_DEST/BroadcastNasBridge-Windows-x64/"
+cp "$ROOT/BroadcastNasBridge/scripts/Launch-BroadcastNasBridge.bat" "$BNB_DEST/BroadcastNasBridge-Windows-x64/" 2>/dev/null || true
+# Windows 런처: 게시된 exe 직접 실행용
+cat > "$BNB_DEST/BroadcastNasBridge-Windows-x64/Start-BroadcastNasBridge.bat" <<'EOF'
+@echo off
+cd /d "%~dp0"
+start "" BroadcastNasBridge.exe
+EOF
+rm -rf "$BNB_STAGE"
+zip_dir "$BNB_DEST/BroadcastNasBridge-Windows-x64" "$BNB_DEST/BroadcastNasBridge-Windows-x64-$STAMP.zip"
+
+echo "== BroadcastNasBridge macOS =="
+export BROADCAST_NAS_BRIDGE_BUILD_DIR="$BNB_DEST"
+bash "$ROOT/BroadcastNasBridge/package-portable-macos.sh"
+
 # --- Suite bundle ---
 echo "== Suite bundle =="
 BUNDLE_ROOT="$OUT/_bundle_stage/BroadcastingApp_$LABEL"
@@ -198,6 +221,7 @@ cp -R "$FC_DEST/FileChecker-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$SDM_DEST/BroadcastingSchedule-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$WL_DEST/WorkLog-Windows-x64" "$BUNDLE_ROOT/Windows/"
 cp -R "$SR_PORTABLE" "$BUNDLE_ROOT/Windows/"
+cp -R "$BNB_DEST/BroadcastNasBridge-Windows-x64" "$BUNDLE_ROOT/Windows/"
 
 # Mac payloads (있는 것만)
 [[ -d "$CO_DEST/CtrlOne-macOS-arm64" ]] && cp -R "$CO_DEST/CtrlOne-macOS-arm64" "$BUNDLE_ROOT/Mac/"
@@ -208,6 +232,8 @@ cp -R "$SR_PORTABLE" "$BUNDLE_ROOT/Windows/"
 [[ -d "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" ]] && cp -R "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" "$BUNDLE_ROOT/Mac/"
 [[ -d "$FC_DEST/FileChecker-macOS-arm64" ]] && cp -R "$FC_DEST/FileChecker-macOS-arm64" "$BUNDLE_ROOT/Mac/"
 [[ -d "$FC_DEST/FileChecker-macOS-x64" ]] && cp -R "$FC_DEST/FileChecker-macOS-x64" "$BUNDLE_ROOT/Mac/"
+[[ -d "$BNB_DEST/BroadcastNasBridge-macOS-arm64" ]] && cp -R "$BNB_DEST/BroadcastNasBridge-macOS-arm64" "$BUNDLE_ROOT/Mac/"
+[[ -d "$BNB_DEST/BroadcastNasBridge-macOS-x64" ]] && cp -R "$BNB_DEST/BroadcastNasBridge-macOS-x64" "$BUNDLE_ROOT/Mac/"
 
 cp "$ROOT/scripts/Install-BroadcastApps.ps1" "$BUNDLE_ROOT/"
 cp "$ROOT/scripts/Install-BroadcastApps.bat" "$BUNDLE_ROOT/"
@@ -216,10 +242,11 @@ macOS 배포본
 ============
 
 포함
+- BroadcastNasBridge-macOS-arm64 / …-x64 (17820) ← 권장 진입점
 - CtrlOne-macOS-arm64 / …-x64 (5177)
-- WorkLog-macOS-arm64.app / WorkLog-macOS-x64.app (17822)
-- BroadcastingSchedule-macOS-arm64 / …-x64 (17821)
-- FileChecker-macOS-arm64 / …-x64 (5187)
+- WorkLog-macOS-arm64.app / WorkLog-macOS-x64.app (17822, 레거시)
+- BroadcastingSchedule-macOS-arm64 / …-x64 (17821, 레거시)
+- FileChecker-macOS-arm64 / …-x64 (5187, 레거시)
 
 미포함
 - ScheduleReader (Windows만)
@@ -259,7 +286,7 @@ cat > "$BUNDLE_ROOT/README.txt" <<EOF
 
 Mac은 Mac\\ 폴더의 앱을 직접 실행하세요.
 
-포트: Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
+포트: Bridge 17820 / Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
 EOF
 
 ZIP_OUT="$OUT/BroadcastingApp_$LABEL.zip"

@@ -36,6 +36,42 @@
 
 ## 기록
 
+## 2026-09-08 — NAS 통합 브리지 `#90` 구현
+
+- **스위트:** `—` (브리지 포함 재배포는 별도)
+- **대상:** BroadcastNasBridge / 빌드스크립트 / 문서
+- **유형:** 기능
+
+### 내용
+- 새 프로젝트 `BroadcastNasBridge` (`http://127.0.0.1:17820`)
+- 단일 인스턴스 mutex · UI 세션 5초 grace · `nas.json` · Temp/Permanent SMB 캐시
+- 시작 인덱스·경로 마법사 · 미연결 시 setup 유도
+- SDM/WL/FC UI를 `/schedule` `/worklog` `/files`로 서빙, API 동일 프로세스
+- `scripts/sync-ui.sh` · `package-portable-macos.sh` · `Build-BroadcastApps.sh` 연동
+
+### 확인
+- [x] `dotnet build -c Release` (net10.0)
+- [x] `/api/health` · 허브 · setup · `/schedule/` `/worklog/` `/files/` HTTP 200
+- [ ] 방송실 NAS 실기 연결·세 앱 동시 사용
+- [ ] `Build-BroadcastApps` 전체 재배포
+
+---
+
+## 2026-09-08 — NAS 통합 브리지 계획 문서화
+
+- **스위트:** `—`
+- **대상:** 문서
+- **유형:** 문서
+
+### 내용
+- SDM·WorkLog·FileChecker 통합 NAS 브리지 계획 확정·문서화 (`docs/NAS-BRIDGE-PLAN.md`)
+- 결정: 세션 전부 종료 후 5초 grace · 경로 마법사 스마트 프리필 · 미연결 시 마법사 · 단일 포트 `17820` · TODO `#90`
+
+### 확인
+- [x] 문서만 (구현 미착수)
+
+---
+
 ## 2026-09-08 — 스위트 1.1.0.3 배포 빌드
 
 - **스위트:** `1.1.0.3_20260908`

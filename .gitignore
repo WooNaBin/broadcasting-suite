@@ -35,6 +35,13 @@ publish/
 **/presets.json
 **/data/settings.json
 **/data/schedules.json
+**/data/files/
+
+# BroadcastNasBridge — sync-ui 산출물 (빌드/실행 시 재생성)
+/BroadcastNasBridge/wwwroot/schedule/
+/BroadcastNasBridge/wwwroot/worklog/
+/BroadcastNasBridge/wwwroot/files/
+/BroadcastNasBridge/data/
 
 # OS / 에디터
 Thumbs.db

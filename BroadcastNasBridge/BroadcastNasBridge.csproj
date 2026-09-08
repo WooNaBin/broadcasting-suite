@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>BroadcastNasBridge</AssemblyName>
+    <Product>Broadcast NAS Bridge</Product>
+    <AssemblyTitle>Broadcast NAS Bridge</AssemblyTitle>
+    <Description>Unified NAS bridge for Schedule · WorkLog · FileChecker</Description>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(RuntimeIdentifier) != '' AND $(RuntimeIdentifier.StartsWith('win'))">
+    <OutputType>WinExe</OutputType>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

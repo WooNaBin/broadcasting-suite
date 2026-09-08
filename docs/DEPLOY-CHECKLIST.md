@@ -17,11 +17,18 @@ BroadcastingApp_<label>\
 
 ## 공통
 
-- [ ] Windows 10/11 x64
-- [ ] 포트 충돌 없음: 17821(SDM) / 17822(WorkLog) / 17823(ScheduleReader) / 5177(CtrlOne) / 5187(FileChecker)
-- [ ] **SDM · WorkLog · FileChecker · 탐색기** 모두 **같은 NAS 계정** 사용 (Windows는 서버당 계정 1세트)
+- [ ] Windows 10/11 x64 (Mac은 Bridge·CtrlOne·SDM·WL·FC 해당분)
+- [ ] **권장:** `BroadcastNasBridge` (`17820`) — NAS 설정 1회 후 스케줄·일지·파일체크
+- [ ] 포트: **17820(Bridge)** / 17821·17822·5187(레거시 단독) / 17823(SR) / 5177(CtrlOne)
+- [ ] 레거시 단독 exe를 쓸 경우 SDM·WorkLog·FileChecker·탐색기 **같은 NAS 계정**
 
-## ScheduleDataManager
+## BroadcastNasBridge (권장)
+
+- [ ] `Windows\BroadcastNasBridge-Windows-x64\BroadcastNasBridge.exe` (또는 Start bat)
+- [ ] http://127.0.0.1:17820 → NAS 설정 → 앱 카드
+- [ ] 탭·시작 페이지를 모두 닫으면 약 5초 후 종료
+
+## ScheduleDataManager (레거시 단독)
 
 - [ ] `Windows\BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe` → http://127.0.0.1:17821
 - [ ] 공유 예: `Temp DATA\_data`
