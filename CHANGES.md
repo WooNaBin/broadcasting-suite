@@ -36,6 +36,55 @@
 
 ## 기록
 
+## 2026-09-08 — CtrlOne #43 슬롯·버퍼 + 빌드 #63/#64 Windows/Mac·설치
+
+- **스위트:** `—` (재빌드 시 반영)
+- **대상:** CtrlOne, 빌드스크립트, 문서
+- **유형:** 기능 | 문서
+
+### 내용
+- `#43` HyperDeck 수신 버퍼 256KB 상한, `Dictionary` 슬롯(최대 8), `DeviceSnapshot.Slots` + Slot1/Slot2 별칭, UI·데모 3슬롯 레이아웃
+- `#63` 통합 zip: `Windows/` · `Mac/` 분리, README 경로 갱신
+- `#64` `Install-BroadcastApps.ps1`/`.bat` — 설치 폴더·Windows만 복사·바로가기 선택
+- PROJECTS / DEPLOY-CHECKLIST 폴더 안내
+
+### 확인
+- [ ] CtrlOne Release 빌드
+- [ ] `Build-BroadcastApps` 통합 zip 레이아웃 확인
+- [ ] 3슬롯 장비 실기 모니터링
+
+## 2026-09-08 — WorkLog #21 PIN · #22 인쇄 다듬기
+
+- **스위트:** `—`
+- **대상:** WorkLog
+- **유형:** 기능 | 수정 | 문서
+
+### 내용
+- `#22`: 인쇄 본문에서 `[템플릿…]` 접두 제거(일지 텍스트만). `.print-sheet` 헤더 룰·half `#fafafa`·날짜 계층 보강(흑백 인쇄 고려)
+- `#21`: 프로필 선택 시 숫자 PIN(1–8) 게이트. 미설정이면 설정(이중 입력) 후 PBKDF2-SHA256을 `profiles.json`에 저장. 검증 실패 시 토스트·프로필 화면 유지. 기억된 profileId도 동일 게이트. prefs/audit에 PIN 미저장
+- `docs/schema.md` profiles.pin 스키마 반영
+
+### 확인
+- [ ] 로컬 실행 (PIN 설정·검증·인쇄 미리보기)
+- [ ] NAS 동시 접속 (해당 시)
+- [ ] `Build-BroadcastApps.bat` 빌드
+
+## 2026-09-08 — SDM 일괄 일정 입력 (#11)
+
+- **스위트:** `—` (재빌드 권장)
+- **대상:** ScheduleDataManager
+- **유형:** 기능
+
+### 내용
+- 일정 보드에 **일괄 입력** 버튼·다이얼로그 추가 (다행: 시작/종료일, 시간, 색상·장소 select, 제목)
+- 기간 확장 로직을 `expandScheduleDateRange`로 추출해 단일 저장(`submitSchedule`)과 공유
+- 제목 있는 행만 저장, 시작===종료면 하루 일정, `saveLocal` + `render`
+
+### 확인
+- [ ] 로컬 실행
+- [ ] NAS 동시 접속 (해당 시)
+- [ ] `Build-BroadcastApps.bat` 빌드
+
 ## 2026-09-08 — 스위트 1.0.1.1 배포 빌드
 
 - **스위트:** `1.0.1.1_20260908`

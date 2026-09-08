@@ -143,8 +143,18 @@
 | 버전 이력 | `Builded\versions\*.json` |
 | 앱별 portable | 아래 표 |
 
-통합 zip 안에는 압축되지 않은 각 앱 폴더가 들어 있다 (`CtrlOne-Windows-x64`, `FileChecker-Windows-x64`, `BroadcastingSchedule-Windows-x64`, `WorkLog-Windows-x64`, `ScheduleReader-portable` + `VERSION.txt`).
+통합 zip 안에는 OS별 폴더와 설치 도우미가 들어 있다.
 
+```
+BroadcastingApp_<label>/
+  Windows/          ← CtrlOne-Windows-x64, FileChecker-…, …
+  Mac/              ← (추후 macOS 산출물)
+  VERSION.txt
+  README.txt
+  Install-BroadcastApps.bat / .ps1
+```
+
+설치 시 `Install-BroadcastApps.bat`로 위치를 고르면 **Windows\만** 복사한다 (바탕화면 바로가기 선택 가능).  
 ScheduleReader 패키지의 `models/`는 OCR용으로 **용량이 클 수 있음**. 배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md).
 
 | 앱 | Builded 산출물 |

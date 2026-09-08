@@ -177,14 +177,26 @@ function New-SuiteBundleZip {
     if (Test-Path $stageRoot) { Remove-Item $stageRoot -Recurse -Force }
     Ensure-Dir $stage
 
+    $windowsDir = Join-Path $stage 'Windows'
+    $macDir = Join-Path $stage 'Mac'
+    Ensure-Dir $windowsDir
+    Ensure-Dir $macDir
+
     foreach ($r in $OkResults) {
         if (-not $r.portable -or -not (Test-Path $r.portable)) {
             throw "portable 폴더 없음: $($r.name) → $($r.portable)"
         }
         $leaf = Split-Path $r.portable -Leaf
-        Write-Host "  + $leaf"
-        Copy-Item $r.portable (Join-Path $stage $leaf) -Recurse -Force
+        Write-Host "  + Windows\$leaf"
+        Copy-Item $r.portable (Join-Path $windowsDir $leaf) -Recurse -Force
     }
+
+    # 향후 macOS 산출물이 있으면 Mac\ 로 복사 (현재는 빈 폴더 유지)
+    $macMarker = Join-Path $macDir 'README.txt'
+    Write-Utf8NoBom $macMarker @"
+macOS 배포본은 아직 포함되지 않았습니다.
+추후 Mac 빌드가 추가되면 이 폴더에 앱 폴더가 들어갑니다.
+"@.TrimEnd()
 
     $versionTxt = @"
 BroadcastingApp suite
@@ -203,18 +215,40 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
 방송실 프로그램 통합 배포 패키지
 ================================
 
-압축 해제 후 각 폴더의 실행 파일을 사용하세요.
+폴더 구성
+---------
+- Windows\   … Windows x64 포터블 앱
+- Mac\       … macOS용 (추후)
+- Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
+- VERSION.txt
 
-- CtrlOne-Windows-x64\CtrlOne.exe
-- FileChecker-Windows-x64\Start-FileCheckerFinder.bat
-- BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe
-- WorkLog-Windows-x64\WorkLog.exe
-- ScheduleReader-portable\Setup-And-Run.bat (최초) / serve.bat
+설치 (권장)
+-----------
+1. zip 압축 해제
+2. Install-BroadcastApps.bat 실행
+3. 설치 폴더 선택 (기본: %LOCALAPPDATA%\BroadcastingApp)
+4. Windows\ 내용만 복사됨. 바탕화면 바로가기는 선택
+
+수동 실행
+---------
+- Windows\CtrlOne-Windows-x64\CtrlOne.exe
+- Windows\FileChecker-Windows-x64\Start-FileCheckerFinder.bat
+- Windows\BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe
+- Windows\WorkLog-Windows-x64\WorkLog.exe
+- Windows\ScheduleReader-portable\Setup-And-Run.bat (최초) / serve.bat
 
 포트: Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
 버전 정보: VERSION.txt
 "@
     Write-Utf8NoBom (Join-Path $stage 'README.txt') $readme.TrimEnd()
+
+    $installerPs1 = Join-Path $PSScriptRoot 'Install-BroadcastApps.ps1'
+    $installerBat = Join-Path $PSScriptRoot 'Install-BroadcastApps.bat'
+    if (-not (Test-Path $installerPs1)) { throw "설치 스크립트 없음: $installerPs1" }
+    if (-not (Test-Path $installerBat)) { throw "설치 스크립트 없음: $installerBat" }
+    Copy-Item $installerPs1 (Join-Path $stage 'Install-BroadcastApps.ps1') -Force
+    Copy-Item $installerBat (Join-Path $stage 'Install-BroadcastApps.bat') -Force
+    Write-Host "  + Install-BroadcastApps.ps1 / .bat"
 
     $zipName = "BroadcastingApp_$Label.zip"
     $zipPath = Join-Path $OutRoot $zipName
