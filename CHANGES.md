@@ -36,6 +36,19 @@
 
 ## 기록
 
+## 2026-09-08 — SDM Mac SMB File exists 수정
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager
+- **유형:** 수정
+
+### 내용
+- LocalBridge `ConnectMac`: 공유별 고정 마운트 경로, 마운트 전 디렉터리 정리, `umount -f` 재시도, Finder `/Volumes/<share>` 재사용 (FileChecker `#30`과 동일 패턴)
+
+### 확인
+- [x] macOS arm64 패키지 재빌드
+- [ ] NAS `Temp DATA` 접속 실기
+
 ## 2026-09-08 — TODO #10 일괄 행추가 · #30 Mac NAS File exists
 
 - **스위트:** `—`
