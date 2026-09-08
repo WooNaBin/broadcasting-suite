@@ -36,6 +36,22 @@
 
 ## 기록
 
+## 2026-09-08 — 스위트 1.1.0.3 배포 빌드
+
+- **스위트:** `1.1.0.3_20260908`
+- **대상:** 전 앱 (Windows + Mac 포함분)
+- **유형:** 배포
+
+### 내용
+- `#10`/`#30`/SDM Mac SMB/`FileChecker`·`CtrlOne` macOS 지원 반영 재빌드
+- 통합 zip: `Builded/BroadcastingApp_1.1.0.3_20260908.zip`
+- Mac: CtrlOne, FileChecker, ScheduleDataManager, WorkLog (arm64/x64)
+- Windows: 5개 앱 전체
+
+### 확인
+- [x] `scripts/Build-BroadcastApps.sh Build`
+- [ ] 방송실 설치·실행 스모크
+
 ## 2026-09-08 — SDM Mac SMB File exists 수정
 
 - **스위트:** `—`
