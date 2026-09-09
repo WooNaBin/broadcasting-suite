@@ -125,19 +125,20 @@ public sealed class SmbConnection
         var rootShareName = parts[0];
         var subPath = parts.Length > 1 ? string.Join(Path.DirectorySeparatorChar, parts.Skip(1)) : null;
 
-        // Finder 등으로 이미 /Volumes/<share> 에 올라와 있으면 재사용
-        var volumesPath = Path.Combine("/Volumes", rootShareName);
-        if (Directory.Exists(volumesPath))
+        // 이미 같은 공유가 마운트돼 있으면 재사용 (브리지·레거시·Finder 중복 마운트 방지 → 최대 Temp+Permanent 2개)
+        var existing = FindExistingSmbfsMount(normalizedHost, rootShareName);
+        if (existing is not null)
         {
-            macMountPoint = volumesPath;
+            macMountPoint = existing;
             macMountOwned = false;
-            root = string.IsNullOrEmpty(subPath) ? volumesPath : Path.Combine(volumesPath, subPath);
+            root = string.IsNullOrEmpty(subPath) ? existing : Path.Combine(existing, subPath);
             try
             {
                 if (!Directory.Exists(root))
                     throw new DirectoryNotFoundException(
                         $"SMB 경로에 접근할 수 없습니다.\n확인 경로: {root}\n공유명 아래 하위 폴더가 있다면 '공유명/하위폴더' 형식으로 입력하세요.");
                 _ = Directory.GetFiles(root);
+                StartupConsole.WriteLine($"Mac SMB 재사용: //{normalizedHost}/{rootShareName} → {existing}");
                 return;
             }
             catch (Exception ex) when (ex is not InvalidOperationException and not DirectoryNotFoundException)
@@ -145,13 +146,12 @@ public sealed class SmbConnection
                 macMountPoint = null;
                 root = null;
                 throw new InvalidOperationException(
-                    $"이미 마운트된 /Volumes 경로 접근 중 오류입니다.\n경로: {root}\n{ex.Message}", ex);
+                    $"이미 마운트된 경로 접근 중 오류입니다.\n경로: {existing}\n{ex.Message}", ex);
             }
         }
 
         // 호스트+공유별 고정 마운트 경로 (Guid 매번 생성 → File exists 재발 방지)
-        var safeShare = string.Concat(rootShareName.Select(ch =>
-            char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '_'));
+        var safeShare = SanitizeShareForPath(rootShareName);
         var mountPoint = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Library",
@@ -181,12 +181,13 @@ public sealed class SmbConnection
 
         if (lastError is not null)
         {
-            // 실패 후에도 Finder 마운트가 생기면 폴백
-            if (Directory.Exists(volumesPath))
+            // 실패 후 Finder·다른 앱이 마운트했을 수 있음
+            var fallback = FindExistingSmbfsMount(normalizedHost, rootShareName);
+            if (fallback is not null)
             {
-                macMountPoint = volumesPath;
+                macMountPoint = fallback;
                 macMountOwned = false;
-                root = string.IsNullOrEmpty(subPath) ? volumesPath : Path.Combine(volumesPath, subPath);
+                root = string.IsNullOrEmpty(subPath) ? fallback : Path.Combine(fallback, subPath);
                 if (Directory.Exists(root))
                 {
                     _ = Directory.GetFiles(root);
@@ -218,6 +219,120 @@ public sealed class SmbConnection
             throw new InvalidOperationException(
                 $"SMB 연결 후 경로 접근 중 오류입니다.\n경로: {root}\n{ex.Message}", ex);
         }
+    }
+
+    private static string SanitizeShareForPath(string shareName) =>
+        string.Concat(shareName.Select(ch =>
+            char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '_'));
+
+    /// <summary>
+    /// 동일 호스트+공유의 기존 smbfs 마운트를 찾는다. 있으면 새 mount_smbfs 하지 않는다.
+    /// </summary>
+    private static string? FindExistingSmbfsMount(string host, string shareName)
+    {
+        foreach (var candidate in EnumerateLikelyMountPoints(host, shareName))
+        {
+            if (CanAccessDirectory(candidate))
+                return candidate;
+        }
+
+        foreach (var mounted in ListSmbfsMountPoints())
+        {
+            if (!MountedShareMatches(mounted.Source, host, shareName))
+                continue;
+            if (CanAccessDirectory(mounted.Path))
+                return mounted.Path;
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> EnumerateLikelyMountPoints(string host, string shareName)
+    {
+        yield return Path.Combine("/Volumes", shareName);
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var safe = SanitizeShareForPath(shareName);
+        var support = Path.Combine(home, "Library", "Application Support");
+        yield return Path.Combine(support, "BroadcastNasBridge", "mnt", $"{host}_{safe}");
+        yield return Path.Combine(support, "BroadcastingSchedule", "mnt", $"{host}_{safe}");
+        yield return Path.Combine(support, "FileChecker", "mnt", $"{host}_{safe}");
+        yield return Path.Combine(support, "ScheduleDataManager", "mnt", $"{host}_{safe}");
+        yield return Path.Combine(support, "WorkLog", "mnt");
+    }
+
+    private static bool CanAccessDirectory(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return false;
+            _ = Directory.GetFileSystemEntries(path);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool MountedShareMatches(string source, string host, string shareName)
+    {
+        // //user@host/Share 또는 smb://user@host/Share%20Name
+        var s = source.Trim();
+        if (s.StartsWith("smb:", StringComparison.OrdinalIgnoreCase))
+            s = s[4..];
+        s = s.TrimStart('/');
+        // user@host/share...
+        var at = s.LastIndexOf('@');
+        var pathPart = at >= 0 ? s[(at + 1)..] : s;
+        var slash = pathPart.IndexOf('/');
+        if (slash < 0) return false;
+        var mountedHost = pathPart[..slash];
+        var mountedShareEnc = pathPart[(slash + 1)..].Split('/', 2)[0];
+        string mountedShare;
+        try { mountedShare = Uri.UnescapeDataString(mountedShareEnc); }
+        catch { mountedShare = mountedShareEnc; }
+
+        return mountedHost.Equals(host, StringComparison.OrdinalIgnoreCase) &&
+               mountedShare.Equals(shareName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<(string Source, string Path)> ListSmbfsMountPoints()
+    {
+        var list = new List<(string, string)>();
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "/sbin/mount",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            using var process = Process.Start(psi);
+            if (process is null) return list;
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(5000);
+            // //user@host/Share on /path (smbfs, ...)
+            foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!line.Contains("smbfs", StringComparison.OrdinalIgnoreCase)) continue;
+                var onIdx = line.IndexOf(" on ", StringComparison.Ordinal);
+                if (onIdx < 0) continue;
+                var source = line[..onIdx].Trim();
+                var rest = line[(onIdx + 4)..];
+                var paren = rest.IndexOf(" (", StringComparison.Ordinal);
+                var path = (paren >= 0 ? rest[..paren] : rest).Trim();
+                if (!string.IsNullOrWhiteSpace(source) && !string.IsNullOrWhiteSpace(path))
+                    list.Add((source, path));
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+        return list;
     }
 
     private static void PrepareEmptyMountPoint(string mountPoint)
@@ -261,6 +376,7 @@ public sealed class SmbConnection
         Exception? lastError = null;
         foreach (var source in sources.Distinct(StringComparer.Ordinal))
         {
+            // nobrowse 우선 — Finder에 드라이브가 중복 표시되는 것 완화. 실패 시에만 browse 허용.
             foreach (var nobrowse in new[] { true, false })
             {
                 try

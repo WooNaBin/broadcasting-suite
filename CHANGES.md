@@ -36,6 +36,40 @@
 
 ## 기록
 
+## 2026-09-10 — Mac 중복 마운트 방지 · 레거시 정리 1단계
+
+- **스위트:** `—`
+- **대상:** BroadcastNasBridge / ScheduleDataManager / WorkLog / FileChecker / 문서
+- **유형:** 수정 | 문서
+- **TODO:** `#3` `#116`
+
+### 내용
+- `#3`: Mac에서 같은 NAS 공유를 여러 번 mount_smbfs 하지 않도록 기존 마운트 재사용. SDM·WL·FC는 브리지 감지 시 URL만 오픈
+- `#116`: [docs/LEGACY-CLEANUP.md](docs/LEGACY-CLEANUP.md) 작성 · 삭제 기준·단계 · PROJECTS/체크리스트 폴백 명시. 빌드 축소는 `#124`
+- Win/Mac: 브리지 유도 공통
+
+### 확인
+- [x] Bridge·SDM LocalBridge·FileCheckerFinder 빌드
+- [ ] Mac 실기: 브리지만 켰을 때 Finder/마운트 ≤2 (Temp+Permanent)
+
+## 2026-09-10 — WL Mac 브리지 유도 · 인쇄 양식 · Win/Mac 규칙
+
+- **스위트:** `—`
+- **대상:** WorkLog / BroadcastNasBridge / 문서·규칙
+- **유형:** 수정 | 기능 | 문서
+- **TODO:** `#30` `#31`
+
+### 내용
+- `#30`: MacBridge·LocalBridge가 브리지(17820) 감지 시 `/worklog`로 진입(허브 NAS 세션 공유). Win/Mac 공통.
+- `#31`: 인쇄 — 서명란 밀착, 날짜 최대 4, 업무내용 카드 양식(동그라미/번호/줄만/카드)·제목 토글
+- `sync-ui` + LocalBridge·BroadcastNasBridge Release 빌드 확인
+- 규칙: `.cursor/rules/cross-platform-win-mac.mdc` (항상 적용)
+
+### 확인
+- [x] sync-ui · LocalBridge/Bridge 빌드
+- [ ] Mac 실기: 브리지 연결 후 WorkLog.app → `/worklog` 진입
+- [ ] 인쇄 미리보기·실제 인쇄(1~4일)
+
 ## 2026-09-09 — Mac용 빌드 래퍼(.command) 추가
 
 - **스위트:** —

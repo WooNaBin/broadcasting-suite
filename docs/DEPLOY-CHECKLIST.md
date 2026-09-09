@@ -19,7 +19,9 @@ BroadcastingApp_<label>\
 
 - [ ] Windows 10/11 x64 (Mac은 Bridge·CtrlOne·SDM·WL·FC 해당분)
 - [ ] **권장:** `BroadcastNasBridge` (`17820`) — NAS 설정 1회 후 스케줄·일지·파일체크
-- [ ] 포트: **17820(Bridge)** / 17821·17822·5187(레거시 단독) / 17823(SR) / 5177(CtrlOne)
+- [ ] 포트: **17820(Bridge)** / 17821·17822·5187(레거시 폴백) / 17823(SR) / 5177(CtrlOne)
+- [ ] 레거시 단독은 **브리지가 꺼져 있을 때만**. 브리지가 켜져 있으면 단독 실행해도 `/schedule` `/worklog` `/files`로 연결됨
+- [ ] 레거시 정리 문서: [LEGACY-CLEANUP.md](LEGACY-CLEANUP.md)
 - [ ] 레거시 단독 exe를 쓸 경우 SDM·WorkLog·FileChecker·탐색기 **같은 NAS 계정**
 
 ## BroadcastNasBridge (권장)
@@ -28,19 +30,19 @@ BroadcastingApp_<label>\
 - [ ] http://127.0.0.1:17820 → NAS 설정 → 앱 카드
 - [ ] 탭·시작 페이지를 모두 닫으면 약 5초 후 종료
 
-## ScheduleDataManager (레거시 단독)
+## ScheduleDataManager (레거시 폴백)
 
-- [ ] `Windows\BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe` → http://127.0.0.1:17821
+- [ ] 가능하면 브리지 `/schedule` 사용. 단독: `BroadcastingSchedule.exe` → http://127.0.0.1:17821
 - [ ] 공유 예: `Temp DATA\_data`
 
-## WorkLog
+## WorkLog (레거시 폴백)
 
-- [ ] `Windows\WorkLog-Windows-x64\WorkLog.exe` → http://127.0.0.1:17822
+- [ ] 가능하면 브리지 `/worklog` 사용. 단독: `WorkLog.exe` → http://127.0.0.1:17822
 - [ ] 공유 예: `Temp DATA\_data\_work_log`
 
-## FileChecker
+## FileChecker (레거시 폴백)
 
-- [ ] `Windows\FileChecker-Windows-x64\FileCheckerFinder.exe` 또는 `Start-FileCheckerFinder.bat` **하나만** 실행
+- [ ] 가능하면 브리지 `/files` 사용. 단독: `FileCheckerFinder.exe` 또는 `Start-FileCheckerFinder.bat` **하나만**
 - [ ] 설정에 스케줄 JSON 경로 지정 후 **Recording 일정 가져오기**
 - [ ] 미디어 NAS: `Permanent DATA\H264_mp4 DATA` 등
 

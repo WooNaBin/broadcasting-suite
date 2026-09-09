@@ -10,6 +10,7 @@
 | [TODO.md](TODO.md) | **버그·개선 할 일** → 「방송실 TODO 해줘」로 일괄 작업 |
 | [CHANGES.md](CHANGES.md) | 수정·배포 기록 |
 | [docs/NAS-BRIDGE-PLAN.md](docs/NAS-BRIDGE-PLAN.md) | SDM·WL·FC 통합 NAS 브리지 설계 (`BroadcastNasBridge`) |
+| [docs/LEGACY-CLEANUP.md](docs/LEGACY-CLEANUP.md) | 레거시 단독 앱 정리 기준·단계 (`#116`) |
 | [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md) | 외부·모바일 접속 방법 (VPN / HTTPS, 상시 PC vs 시놀로지) |
 | `broadcast-suite.version.json` | 스위트 버전·build 번호 |
 
@@ -17,6 +18,11 @@
 
 한글 제목은 **체언형**으로 짧게 (`로그인 기억 추가` O · `추가한다` X).  
 규칙: `.cursor/rules/commit-message-ko.mdc`
+
+### Windows · Mac 교차 검토
+
+기능·경로·문자열·빌드/배포·실행은 **양 OS**에서 의도대로 나오는지 본다.  
+규칙: `.cursor/rules/cross-platform-win-mac.mdc` (에이전트 항상 적용)
 
 | 폴더 | 역할 |
 |------|------|
@@ -34,7 +40,8 @@
 ## 형제 앱 (같은 NAS, 동시 실행)
 
 **권장:** `BroadcastNasBridge` 한 프로세스가 SMB를 소유하고 `/schedule` · `/worklog` · `/files`를 연다.  
-단독 exe(17821/17822/5187)는 레거시로 유지한다.
+단독 exe(17821/17822/5187)는 **폴백(레거시)** — 브리지가 켜져 있으면 단독 앱은 브리지 URL만 연다.  
+정리 계획: [docs/LEGACY-CLEANUP.md](docs/LEGACY-CLEANUP.md) (`#116`)
 
 | 진입 | 기본 포트 | 기본 공유 경로 | NAS 역할 |
 |------|-----------|----------------|----------|
