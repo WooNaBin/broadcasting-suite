@@ -24,6 +24,8 @@ Projects/                          ← 이 메타 레포 (또는 클론 루트)
   TODO.md
   CHANGES.md
   Build-BroadcastApps.bat
+  Build-BroadcastApps.command      ← macOS Finder용
+  Configure-BroadcastBuild.command
   scripts/
   BroadcastNasBridge/              ← 통합 NAS 브리지 (메타 레포에 포함)
   CtrlOne/                         ← git clone (별도 레포)
@@ -66,6 +68,9 @@ git clone https://github.com/WooNaBin/ScheduleReader.git
 ```
 
 ```bash
+./Build-BroadcastApps.command
+./Configure-BroadcastBuild.command
+# 또는
 ./scripts/Build-BroadcastApps.sh --set-out ~/Releases --target all
 ```
 

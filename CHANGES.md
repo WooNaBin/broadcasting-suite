@@ -36,6 +36,22 @@
 
 ## 기록
 
+## 2026-09-09 — Mac용 빌드 래퍼(.command) 추가
+
+- **스위트:** —
+- **대상:** 빌드스크립트 / 문서
+- **유형:** 기능
+
+### 내용
+- Windows `Build-BroadcastApps.bat` / `Configure-BroadcastBuild.bat` 대응으로 macOS Finder용 `Build-BroadcastApps.command`, `Configure-BroadcastBuild.command` 추가
+- `config`·`menu` 인자, 폴더 선택(osascript), Enter로 창 닫기 — `scripts/Build-BroadcastApps.sh` 호출
+- `PROJECTS.md` / `README.md`에 Mac 빌드 진입점 안내 반영
+
+### 확인
+- [x] `./Build-BroadcastApps.command --show-config` 스모크
+- [ ] Finder 더블클릭
+- [ ] 전체 빌드
+
 ## 2026-09-09 — WL 브리지 진입 시 NAS 로그인 화면·연결 무반응 수정
 
 - **스위트:** `—` (브리지·WorkLog UI 핫픽스, 재배포 전)

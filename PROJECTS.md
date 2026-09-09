@@ -120,9 +120,11 @@
 
 | 방법 | 설명 |
 |------|------|
-| **`Build-BroadcastApps.bat`** | 더블클릭 → 저장된 경로로 전체 빌드 + 통합 zip |
-| **`Configure-BroadcastBuild.bat`** / `Build-BroadcastApps.bat config` | 산출 폴더 선택 → `broadcast-suite.build.json`에 기록 |
-| `Build-BroadcastApps.bat menu` | 경로·OS 선택 메뉴 후 빌드 |
+| **`Build-BroadcastApps.bat`** | Windows 더블클릭 → 저장된 경로로 전체 빌드 + 통합 zip |
+| **`Build-BroadcastApps.command`** | macOS Finder 더블클릭 → 동일 (내부에서 `scripts/Build-BroadcastApps.sh`) |
+| **`Configure-BroadcastBuild.bat`** / `Build-BroadcastApps.bat config` | Windows 산출 폴더 선택 → `broadcast-suite.build.json`에 기록 |
+| **`Configure-BroadcastBuild.command`** / `./Build-BroadcastApps.command config` | macOS 폴더 선택(또는 경로 입력) → 같은 JSON |
+| `Build-BroadcastApps.bat menu` / `./Build-BroadcastApps.command menu` | 경로·OS 선택 메뉴 후 빌드 |
 | `scripts\Build-BroadcastApps.ps1` | Windows PowerShell (옵션 가능) |
 | `scripts/Build-BroadcastApps.sh` | macOS/Linux (같은 JSON 설정) |
 | `scripts\Show-BuildManifest.bat` | 마지막 빌드·버전 요약 |
@@ -159,7 +161,11 @@
 ```
 
 ```bash
-# Mac
+# Mac (Finder 더블클릭 또는 터미널)
+./Build-BroadcastApps.command
+./Configure-BroadcastBuild.command
+./Build-BroadcastApps.command menu
+# 옵션이 많으면 직접:
 ./scripts/Build-BroadcastApps.sh
 ./scripts/Build-BroadcastApps.sh --set-out ~/Releases --target all
 ./scripts/Build-BroadcastApps.sh --show-config
