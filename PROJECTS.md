@@ -10,6 +10,7 @@
 | [TODO.md](TODO.md) | **버그·개선 할 일** → 「방송실 TODO 해줘」로 일괄 작업 |
 | [CHANGES.md](CHANGES.md) | 수정·배포 기록 |
 | [docs/NAS-BRIDGE-PLAN.md](docs/NAS-BRIDGE-PLAN.md) | SDM·WL·FC 통합 NAS 브리지 설계 (`BroadcastNasBridge`) |
+| [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md) | 외부·모바일 접속 방법 (VPN / HTTPS, 상시 PC vs 시놀로지) |
 | `broadcast-suite.version.json` | 스위트 버전·build 번호 |
 
 ### 커밋 메시지

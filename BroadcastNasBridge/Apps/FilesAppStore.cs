@@ -353,11 +353,24 @@ public sealed class FilesAppStore
                 startTime,
                 !string.IsNullOrWhiteSpace(speaker),
                 string.IsNullOrWhiteSpace(speaker) ? null : speaker.Trim(),
-                false,
-                false);
+                HasPreparationFlag(item, "Praise"),
+                HasPreparationFlag(item, "Streaming"));
             return true;
         }
         catch { return false; }
+    }
+
+    private static bool HasPreparationFlag(JsonElement item, string flag)
+    {
+        if (!item.TryGetProperty("preparation", out var prep) || prep.ValueKind != JsonValueKind.Array)
+            return false;
+        foreach (var value in prep.EnumerateArray())
+        {
+            if (value.ValueKind == JsonValueKind.String &&
+                value.GetString()?.Equals(flag, StringComparison.OrdinalIgnoreCase) == true)
+                return true;
+        }
+        return false;
     }
 
     private static string? GetStringProp(JsonElement item, string name) =>
@@ -377,26 +390,55 @@ public sealed class FilesAppStore
     private static object ToDto(FilesStoredSchedule item, List<string> localFiles, List<string> nasFiles)
     {
         var identity = string.Join(' ', item.Input.Date.ToString("yyyyMMdd"), item.Input.Description, item.Input.Instructor);
+        var terms = identity.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        static string Normalize(string value) =>
+            string.Concat(value.Where(c => !char.IsWhiteSpace(c) && c != '_')).ToUpperInvariant();
+
+        static bool IsHqName(string fileNameWithoutExt) =>
+            System.Text.RegularExpressions.Regex.IsMatch(fileNameWithoutExt, @"_\d{1,4}M$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
         string? Find(List<string> files, string kind)
         {
-            return files.FirstOrDefault(f =>
+            bool Match(string f, bool wantHq)
             {
                 var name = Path.GetFileName(f);
-                if (!name.Contains(item.Input.Date.ToString("yyyyMMdd"), StringComparison.OrdinalIgnoreCase))
+                var stem = Path.GetFileNameWithoutExtension(name);
+                var ext = Path.GetExtension(name);
+                var normalized = Normalize(name);
+                if (!terms.All(t => normalized.Contains(Normalize(t), StringComparison.OrdinalIgnoreCase)))
                     return false;
-                if (!name.Contains(item.Input.Description.Replace(' ', '_'), StringComparison.OrdinalIgnoreCase) &&
-                    !name.Contains(item.Input.Description, StringComparison.OrdinalIgnoreCase))
+                if (kind == "audio")
+                    return ext.Equals(".mp3", StringComparison.OrdinalIgnoreCase) || ext.Equals(".wav", StringComparison.OrdinalIgnoreCase);
+                if (!ext.Equals(".mp4", StringComparison.OrdinalIgnoreCase))
+                    return false;
+                var hq = IsHqName(stem);
+                return wantHq ? hq : !hq;
+            }
+
+            if (kind == "audio")
+                return files.FirstOrDefault(f => Match(f, false));
+            if (kind == "video")
+                return files.FirstOrDefault(f => Match(f, false));
+            if (kind == "hq")
+            {
+                var hq = files.FirstOrDefault(f => Match(f, true));
+                if (hq is not null) return hq;
+                var video = files.FirstOrDefault(f => Match(f, false));
+                if (video is null) return null;
+                var baseName = Path.GetFileNameWithoutExtension(video);
+                return files.FirstOrDefault(f =>
                 {
-                    // 느슨: 날짜만 있으면 후보
-                }
-                return kind switch
-                {
-                    "audio" => name.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".wav", StringComparison.OrdinalIgnoreCase),
-                    "video" => name.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase),
-                    "hq" => name.Contains("HQ", StringComparison.OrdinalIgnoreCase) || name.Contains("고화질", StringComparison.OrdinalIgnoreCase),
-                    _ => false,
-                };
-            });
+                    if (!Path.GetExtension(f).Equals(".mp4", StringComparison.OrdinalIgnoreCase))
+                        return false;
+                    var stem = Path.GetFileNameWithoutExtension(f);
+                    if (!IsHqName(stem)) return false;
+                    var stripped = System.Text.RegularExpressions.Regex.Replace(
+                        stem, @"_\d{1,4}M$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    return string.Equals(stripped, baseName, StringComparison.OrdinalIgnoreCase);
+                });
+            }
+            return null;
         }
 
         var localAudio = Find(localFiles, "audio");
