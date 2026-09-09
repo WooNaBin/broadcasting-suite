@@ -59,14 +59,20 @@ git clone https://github.com/WooNaBin/ScheduleReader.git
 
 ```powershell
 .\Build-BroadcastApps.bat
+# 산출 폴더 변경 (기록: broadcast-suite.build.json)
+.\Configure-BroadcastBuild.bat
 # 또는
-.\scripts\Build-BroadcastApps.ps1
+.\scripts\Build-BroadcastApps.ps1 -Target All
 ```
 
-산출물: `Builded\` (gitignore)  
-통합 zip: `Builded\BroadcastingApp_<version>.<build>_<yyyyMMdd>.zip`
+```bash
+./scripts/Build-BroadcastApps.sh --set-out ~/Releases --target all
+```
+
+산출물: 설정한 `outRoot` (기본 `<레포>/Builded`, gitignore)  
+통합 zip: `BroadcastingApp_<version>.<build>_<yyyyMMdd>.zip`
 
 ## 이 레포에 올리는 것 / 올리지 않는 것
 
-- **포함:** 스위트 문서, TODO, 빌드 스크립트, Cursor 규칙(방송실 TODO), 버전 파일  
-- **제외:** 각 앱 소스, `Builded\`, 비밀·로컬 설정, ImgToText 등 스위트 밖 폴더  
+- **포함:** 스위트 문서, TODO, 빌드 스크립트, Cursor 규칙(방송실 TODO), 버전 파일, `broadcast-suite.build.example.json`  
+- **제외:** 각 앱 소스, `Builded\`, `broadcast-suite.build.json`(머신별 경로), 비밀·로컬 설정, ImgToText 등 스위트 밖 폴더  

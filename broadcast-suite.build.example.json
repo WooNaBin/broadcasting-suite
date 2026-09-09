@@ -1,0 +1,5 @@
+{
+    "outRoot": "./Builded",
+    "targets": "host",
+    "_comment": "이 파일을 broadcast-suite.build.json 으로 복사해 사용. outRoot: 산출 폴더(상대경로는 메타 레포 루트 기준). targets: host | windows | macos | all. 실제 설정 파일은 git에 올리지 않음."
+}

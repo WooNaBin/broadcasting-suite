@@ -81,7 +81,22 @@ public sealed class NasService : IDisposable
                 permanentConnected = _permanentShare.IsConnected,
                 lastError = _lastError,
                 configPath = _configStore.ConfigPath,
+                scheduleJsonFile = _config.ScheduleJsonFile,
             };
+        }
+    }
+
+    public void SetActiveScheduleJsonFile(string? fileName)
+    {
+        lock (_gate)
+        {
+            var name = string.IsNullOrWhiteSpace(fileName)
+                ? null
+                : Path.GetFileName(fileName.Trim());
+            if (string.Equals(_config.ScheduleJsonFile, name, StringComparison.OrdinalIgnoreCase))
+                return;
+            _config.ScheduleJsonFile = name;
+            _configStore.Save(_config);
         }
     }
 
@@ -214,6 +229,7 @@ public sealed class NasService : IDisposable
     {
         Directory.CreateDirectory(Path.Combine(root, "work-logs"));
         Directory.CreateDirectory(Path.Combine(root, "audit"));
+        Directory.CreateDirectory(Path.Combine(root, "locks"));
         SeedIfMissing(Path.Combine(root, "profiles.json"), """
             {
               "version": 1,

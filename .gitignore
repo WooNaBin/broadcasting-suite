@@ -53,3 +53,6 @@ Desktop.ini
 # local build helpers
 /tools/
 
+# 머신별 빌드 산출 경로 (예시는 broadcast-suite.build.example.json)
+/broadcast-suite.build.json
+

@@ -796,7 +796,7 @@ public sealed class SmbConnection
 
         var dir = GetOfficialDocumentsDirectory();
         Directory.CreateDirectory(dir);
-        var storedName = BuildDocumentStoredName(scheduleDate, scheduleTitle, scheduleId, ext);
+        var storedName = BuildDocumentStoredName(dir, originalFileName, scheduleDate, ext);
         var targetPath = Path.Combine(dir, storedName);
         File.WriteAllBytes(targetPath, bytes);
 
@@ -923,21 +923,55 @@ public sealed class SmbConnection
         Path.Combine(GetOfficialDocumentsDirectory(), OfficialDocumentsIndexFile);
 
     private static string BuildDocumentStoredName(
+        string directory,
+        string originalFileName,
         string scheduleDate,
-        string scheduleTitle,
-        string scheduleId,
         string extension)
     {
-        var datePart = string.IsNullOrWhiteSpace(scheduleDate)
-            ? DateTime.Now.ToString("yyyy-MM-dd")
-            : scheduleDate.Trim();
-        var titlePart = SanitizeFileToken(scheduleTitle, "schedule");
-        var idPart = string.IsNullOrWhiteSpace(scheduleId)
-            ? Guid.NewGuid().ToString("N")[..8]
-            : new string(scheduleId.Where(char.IsLetterOrDigit).Take(8).ToArray());
-        if (string.IsNullOrEmpty(idPart)) idPart = Guid.NewGuid().ToString("N")[..8];
         var ext = extension.StartsWith('.') ? extension.ToLowerInvariant() : "." + extension.ToLowerInvariant();
-        return $"{datePart}_{titlePart}_{idPart}{ext}";
+        var rawBase = Path.GetFileNameWithoutExtension(originalFileName ?? "");
+        var baseName = SanitizeFileToken(rawBase, "document");
+        var ymd = ToOfficialDocYmd8(scheduleDate);
+
+        // 연결 목록 규칙: YYYYMMDD(8자리)로 시작해야 함
+        if (!Regex.IsMatch(baseName, @"^\d{8}(?!\d)"))
+            baseName = $"{ymd}_{baseName}";
+
+        if (baseName.Length > 80)
+            baseName = baseName[..80].TrimEnd('_');
+
+        return EnsureUniqueDocumentFileName(directory, baseName + ext);
+    }
+
+    private static string ToOfficialDocYmd8(string scheduleDate)
+    {
+        if (!string.IsNullOrWhiteSpace(scheduleDate))
+        {
+            var trimmed = scheduleDate.Trim();
+            if (Regex.IsMatch(trimmed, @"^\d{8}$"))
+                return trimmed;
+            if (DateTime.TryParse(trimmed, out var parsed))
+                return parsed.ToString("yyyyMMdd");
+            var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+            if (digits.Length >= 8)
+                return digits[..8];
+        }
+        return DateTime.Now.ToString("yyyyMMdd");
+    }
+
+    private static string EnsureUniqueDocumentFileName(string directory, string fileName)
+    {
+        var candidate = fileName;
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var ext = Path.GetExtension(fileName);
+        for (var n = 1; File.Exists(Path.Combine(directory, candidate)); n++)
+        {
+            candidate = n <= 99
+                ? $"{stem}_{n:00}{ext}"
+                : $"{stem}_{Guid.NewGuid().ToString("N")[..6]}{ext}";
+            if (n > 99) break;
+        }
+        return candidate;
     }
 
     private static string SanitizeFileToken(string value, string fallback)

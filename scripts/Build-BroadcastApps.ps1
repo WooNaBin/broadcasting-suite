@@ -1,18 +1,23 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  방송실 프로그램 최신 Windows 배포본을 D:\Projects\Builded 에 일괄 생성합니다.
+  방송실 프로그램 배포본을 일괄 생성합니다. (Windows / macOS, 산출 경로는 설정 파일에 기록)
 
 .DESCRIPTION
-  대상: CtrlOne, FileChecker, ScheduleDataManager, ScheduleReader, WorkLog
-  - .NET 앱: self-contained win-x64 단일 실행 파일
-  - ScheduleReader: Python 휴대 패키지(venv는 대상 PC에서 Setup)
+  대상: BroadcastNasBridge, CtrlOne, FileChecker, ScheduleDataManager, ScheduleReader, WorkLog
+  - 산출 경로: -OutRoot > BROADCAST_BUILD_DIR > broadcast-suite.build.json > <레포>/Builded
+  - OS: -Target Host|Windows|Mac|All (설정 파일 targets 와 동일)
+  - .NET 앱: self-contained 단일 실행 파일 (호스트에서 해당 RID 게시)
+  - ScheduleReader: Python 휴대 패키지(Windows만, venv는 대상 PC에서 Setup)
   - 스위트 버전: broadcast-suite.version.json (빌드마다 build 번호 증가)
   - 개별 portable 폴더 + 개별 zip + 통합 zip:
-      Builded\BroadcastingApp_<version>_<yyyyMMdd>.zip
+      <OutRoot>\BroadcastingApp_<version>_<yyyyMMdd>.zip
 
 .EXAMPLE
   .\scripts\Build-BroadcastApps.ps1
+  .\scripts\Build-BroadcastApps.ps1 -Configure
+  .\scripts\Build-BroadcastApps.ps1 -SetOutRoot E:\Releases
+  .\scripts\Build-BroadcastApps.ps1 -Target All
   .\scripts\Build-BroadcastApps.ps1 -Apps CtrlOne,WorkLog
   .\scripts\Build-BroadcastApps.ps1 -SkipZip
   .\scripts\Build-BroadcastApps.ps1 -SkipBundle
@@ -22,8 +27,9 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('CtrlOne', 'FileChecker', 'ScheduleDataManager', 'ScheduleReader', 'WorkLog')]
+    [ValidateSet('BroadcastNasBridge', 'CtrlOne', 'FileChecker', 'ScheduleDataManager', 'ScheduleReader', 'WorkLog')]
     [string[]]$Apps = @(
+        'BroadcastNasBridge',
         'CtrlOne',
         'FileChecker',
         'ScheduleDataManager',
@@ -31,25 +37,31 @@ param(
         'WorkLog'
     ),
     [string]$OutRoot = '',
+    [string]$SetOutRoot = '',
+    [ValidateSet('Host', 'Windows', 'Mac', 'All')]
+    [string]$Target = '',
     [string]$Version = '',
     [ValidateSet('None', 'Build', 'Patch', 'Minor', 'Major')]
     [string]$Bump = 'Build',
     [switch]$SkipZip,
     [switch]$SkipBundle,
-    [switch]$List
+    [switch]$List,
+    [switch]$Configure,
+    [switch]$ShowConfig,
+    [switch]$Menu
 )
 
 $ErrorActionPreference = 'Stop'
 $ProjectsRoot = Split-Path $PSScriptRoot -Parent
-if (-not $OutRoot) {
-    $OutRoot = if ($env:BROADCAST_BUILD_DIR) { $env:BROADCAST_BUILD_DIR } else { Join-Path $ProjectsRoot 'Builded' }
-}
+$BuildConfigPath = Join-Path $ProjectsRoot 'broadcast-suite.build.json'
+$script:WantWindows = $true
+$script:WantMac = $false
 
 $VersionFile = Join-Path $ProjectsRoot 'broadcast-suite.version.json'
 $Stamp = Get-Date -Format 'yyyyMMdd'
 $StampTime = Get-Date -Format 'yyyyMMdd-HHmm'
 $BuildStarted = Get-Date
-$AllSuiteApps = @('CtrlOne', 'FileChecker', 'ScheduleDataManager', 'ScheduleReader', 'WorkLog')
+$AllSuiteApps = @('BroadcastNasBridge', 'CtrlOne', 'FileChecker', 'ScheduleDataManager', 'ScheduleReader', 'WorkLog')
 $BundleZipPath = $null
 $SuiteLabel = $null
 $SuiteVersionInfo = $null
@@ -83,6 +95,184 @@ function Write-Utf8NoBom([string]$FilePath, [string]$Content) {
     [System.IO.File]::WriteAllText($FilePath, $Content, $utf8)
 }
 
+function Get-HostOsTag {
+    if ($env:OS -eq 'Windows_NT') { return 'windows' }
+    return 'macos'
+}
+
+function Convert-ToFullPath([string]$PathValue) {
+    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $null }
+    $p = $PathValue.Trim().Trim('"')
+    if ($p.StartsWith('~')) {
+        $home = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
+        $p = Join-Path $home $p.Substring(1).TrimStart('\', '/')
+    }
+    if (-not [System.IO.Path]::IsPathRooted($p)) {
+        $p = Join-Path $ProjectsRoot $p
+    }
+    try {
+        return [System.IO.Path]::GetFullPath($p)
+    }
+    catch {
+        return $p
+    }
+}
+
+function Read-BuildConfig {
+    if (-not (Test-Path $BuildConfigPath)) {
+        return [pscustomobject]@{
+            outRoot   = $null
+            targets   = 'host'
+            updatedAt = $null
+        }
+    }
+    $raw = [System.IO.File]::ReadAllText($BuildConfigPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+    if (-not $raw.targets) {
+        $raw | Add-Member -NotePropertyName targets -NotePropertyValue 'host' -Force
+    }
+    return $raw
+}
+
+function Save-BuildConfig {
+    param(
+        [string]$OutRootPath,
+        [string]$TargetsValue
+    )
+    $cfg = Read-BuildConfig
+    $payload = [ordered]@{
+        outRoot   = $(if ($OutRootPath) { $OutRootPath } elseif ($cfg.outRoot) { [string]$cfg.outRoot } else { Join-Path $ProjectsRoot 'Builded' })
+        targets   = $(if ($TargetsValue) { $TargetsValue.ToLowerInvariant() } elseif ($cfg.targets) { [string]$cfg.targets } else { 'host' })
+        updatedAt = (Get-Date).ToString('o')
+    }
+    Write-Utf8NoBom $BuildConfigPath ($payload | ConvertTo-Json -Depth 4)
+    Write-Host "빌드 설정 저장: $BuildConfigPath" -ForegroundColor Green
+    Write-Host "  outRoot = $($payload.outRoot)"
+    Write-Host "  targets = $($payload.targets)"
+}
+
+function Resolve-BuildTarget {
+    param([string]$Requested)
+    $cfg = Read-BuildConfig
+    $raw = $Requested
+    if ([string]::IsNullOrWhiteSpace($raw)) { $raw = [string]$cfg.targets }
+    if ([string]::IsNullOrWhiteSpace($raw)) { $raw = 'host' }
+    switch -Regex ($raw.ToLowerInvariant()) {
+        '^(all|both)$' { return 'all' }
+        '^(mac|macos|osx)$' { return 'macos' }
+        '^(win|windows)$' { return 'windows' }
+        default { return 'host' }
+    }
+}
+
+function Initialize-BuildTargets {
+    param([string]$ResolvedTarget)
+    $hostOs = Get-HostOsTag
+    switch ($ResolvedTarget) {
+        'all' {
+            $script:WantWindows = $true
+            $script:WantMac = $true
+        }
+        'windows' {
+            $script:WantWindows = $true
+            $script:WantMac = $false
+        }
+        'macos' {
+            $script:WantWindows = $false
+            $script:WantMac = $true
+        }
+        default {
+            $script:WantWindows = ($hostOs -eq 'windows')
+            $script:WantMac = ($hostOs -ne 'windows')
+        }
+    }
+}
+
+function Resolve-OutRootPath {
+    if ($OutRoot) { return (Convert-ToFullPath $OutRoot) }
+    if ($SetOutRoot) { return (Convert-ToFullPath $SetOutRoot) }
+    if ($env:BROADCAST_BUILD_DIR) { return (Convert-ToFullPath $env:BROADCAST_BUILD_DIR) }
+    $cfg = Read-BuildConfig
+    if ($cfg.outRoot) { return (Convert-ToFullPath ([string]$cfg.outRoot)) }
+    return (Join-Path $ProjectsRoot 'Builded')
+}
+
+function Show-BuildConfigInfo {
+    $cfg = Read-BuildConfig
+    $resolved = Resolve-OutRootPath
+    $resolvedTarget = Resolve-BuildTarget $Target
+    Write-Host "설정 파일: $(if (Test-Path $BuildConfigPath) { $BuildConfigPath } else { '(없음 — 기본값 사용)' })"
+    Write-Host "기록된 outRoot: $(if ($cfg.outRoot) { $cfg.outRoot } else { '(없음)' })"
+    Write-Host "기록된 targets: $(if ($cfg.targets) { $cfg.targets } else { 'host' })"
+    Write-Host "이번 실행 산출 경로: $resolved"
+    Write-Host "이번 실행 대상: $resolvedTarget  (Windows=$script:WantWindows  Mac=$script:WantMac)"
+    Write-Host "환경 변수 BROADCAST_BUILD_DIR: $(if ($env:BROADCAST_BUILD_DIR) { $env:BROADCAST_BUILD_DIR } else { '(없음)' })"
+    Write-Host "우선순위: -OutRoot > BROADCAST_BUILD_DIR > broadcast-suite.build.json > <레포>/Builded"
+}
+
+function Invoke-ConfigureOutRoot {
+    $current = Resolve-OutRootPath
+    Write-Host "현재 산출 경로: $current"
+    $picked = $null
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dlg.Description = '방송실 빌드 산출물 폴더를 선택하세요'
+        $dlg.ShowNewFolderButton = $true
+        if (Test-Path $current) { $dlg.SelectedPath = $current }
+        $result = $dlg.ShowDialog()
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            $picked = $dlg.SelectedPath
+        }
+    }
+    catch {
+        $typed = Read-Host "산출 폴더 경로 (Enter = 현재 값 유지)"
+        if (-not [string]::IsNullOrWhiteSpace($typed)) { $picked = $typed.Trim().Trim('"') }
+    }
+    if (-not $picked) {
+        Write-Host "변경하지 않았습니다."
+        return $current
+    }
+    $full = Convert-ToFullPath $picked
+    $tgt = Resolve-BuildTarget $Target
+    Save-BuildConfig -OutRootPath $full -TargetsValue $tgt
+    return $full
+}
+
+function Show-InteractiveMenu {
+    while ($true) {
+        $OutRoot = Resolve-OutRootPath
+        $resolvedTarget = Resolve-BuildTarget $Target
+        Initialize-BuildTargets $resolvedTarget
+        Write-Host ""
+        Write-Host "방송실 프로그램 빌드" -ForegroundColor Cyan
+        Write-Host "산출 경로: $OutRoot"
+        Write-Host "대상 OS: $resolvedTarget  (이 PC: $(Get-HostOsTag))"
+        Write-Host ""
+        Write-Host "  1) 빌드 시작"
+        Write-Host "  2) 대상 OS: 이 PC만 (host)"
+        Write-Host "  3) 대상 OS: Windows + Mac"
+        Write-Host "  4) 산출 경로 변경"
+        Write-Host "  5) 마지막 빌드 보기"
+        Write-Host "  Q) 종료"
+        $choice = Read-Host "선택"
+        switch -Regex ($choice) {
+            '^1$' { return 'build' }
+            '^2$' {
+                $script:Target = 'Host'
+                Save-BuildConfig -OutRootPath $OutRoot -TargetsValue 'host'
+            }
+            '^3$' {
+                $script:Target = 'All'
+                Save-BuildConfig -OutRootPath $OutRoot -TargetsValue 'all'
+            }
+            '^4$' { $script:OutRoot = Invoke-ConfigureOutRoot }
+            '^5$' { Show-Manifest; Show-BuildConfigInfo }
+            '^[Qq]$' { return 'quit' }
+            default { Write-Host "다시 선택하세요." }
+        }
+    }
+}
+
 function Read-SuiteVersion {
     if (-not (Test-Path $VersionFile)) {
         return [pscustomobject]@{
@@ -92,7 +282,7 @@ function Read-SuiteVersion {
             description = '방송실 프로그램 스위트'
         }
     }
-    return ([System.IO.File]::ReadAllText($VersionFile) | ConvertFrom-Json)
+    return ([System.IO.File]::ReadAllText($VersionFile, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json)
 }
 
 function Save-SuiteVersion($info) {
@@ -184,7 +374,8 @@ function New-SuiteBundleZip {
 
     foreach ($r in $OkResults) {
         if (-not $r.portable -or -not (Test-Path $r.portable)) {
-            throw "portable 폴더 없음: $($r.name) → $($r.portable)"
+            Write-Host "  (Windows portable 없음: $($r.name))" -ForegroundColor Yellow
+            continue
         }
         $leaf = Split-Path $r.portable -Leaf
         Write-Host "  + Windows\$leaf"
@@ -193,6 +384,8 @@ function New-SuiteBundleZip {
 
     # macOS 산출물이 Builded 아래에 있으면 Mac\ 로 복사
     $macCandidates = @(
+        (Join-Path $OutRoot 'BroadcastNasBridge\BroadcastNasBridge-macOS-arm64'),
+        (Join-Path $OutRoot 'BroadcastNasBridge\BroadcastNasBridge-macOS-x64'),
         (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-arm64'),
         (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-x64'),
         (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64.app'),
@@ -215,15 +408,16 @@ function New-SuiteBundleZip {
     if ($macCopied -eq 0) {
         Write-Utf8NoBom $macMarker @"
 macOS 배포본이 없습니다.
-Mac에서 scripts/Build-BroadcastApps.sh 또는 각 앱 package-*-macos.sh 로 빌드하세요.
+Mac에서 scripts/Build-BroadcastApps.sh --target macos (또는 -Target Mac) 로 빌드하세요.
+Windows에서도 -Target All 이면 가능한 앱은 크로스 게시합니다 (FileChecker·ScheduleReader 제외).
 "@.TrimEnd()
     }
     else {
         Write-Utf8NoBom $macMarker @"
 macOS 배포본
 ============
-WorkLog / ScheduleDataManager / FileChecker / CtrlOne (arm64·x64)
-ScheduleReader 는 Windows만.
+BroadcastNasBridge / WorkLog / ScheduleDataManager / CtrlOne (arm64·x64)
+FileChecker·ScheduleReader 는 Windows만 (FileChecker는 WinForms).
 Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <앱>
 "@.TrimEnd()
     }
@@ -248,7 +442,7 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
 폴더 구성
 ---------
 - Windows\   … Windows x64 포터블 앱
-- Mac\       … macOS (WorkLog, ScheduleDataManager, FileChecker)
+- Mac\       … macOS (BroadcastNasBridge, WorkLog, ScheduleDataManager, CtrlOne)
 - Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
 - VERSION.txt
 
@@ -261,13 +455,14 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
 
 수동 실행
 ---------
+- Windows\BroadcastNasBridge-Windows-x64\BroadcastNasBridge.exe  (권장 진입점, 17820)
 - Windows\CtrlOne-Windows-x64\CtrlOne.exe
 - Windows\FileChecker-Windows-x64\Start-FileCheckerFinder.bat
 - Windows\BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe
 - Windows\WorkLog-Windows-x64\WorkLog.exe
 - Windows\ScheduleReader-portable\Setup-And-Run.bat (최초) / serve.bat
 
-포트: Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
+포트: Bridge 17820 / Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
 버전 정보: VERSION.txt
 "@
     Write-Utf8NoBom (Join-Path $stage 'README.txt') $readme.TrimEnd()
@@ -276,7 +471,10 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
     $installerBat = Join-Path $PSScriptRoot 'Install-BroadcastApps.bat'
     if (-not (Test-Path $installerPs1)) { throw "설치 스크립트 없음: $installerPs1" }
     if (-not (Test-Path $installerBat)) { throw "설치 스크립트 없음: $installerBat" }
-    Copy-Item $installerPs1 (Join-Path $stage 'Install-BroadcastApps.ps1') -Force
+    # PS 5.1은 UTF-8 BOM이 있어야 한글 리터럴을 올바르게 읽음
+    $installerText = [System.IO.File]::ReadAllText($installerPs1, [System.Text.UTF8Encoding]::new($false)).TrimStart([char]0xFEFF)
+    $utf8Bom = New-Object System.Text.UTF8Encoding $true
+    [System.IO.File]::WriteAllText((Join-Path $stage 'Install-BroadcastApps.ps1'), $installerText, $utf8Bom)
     Copy-Item $installerBat (Join-Path $stage 'Install-BroadcastApps.bat') -Force
     Write-Host "  + Install-BroadcastApps.ps1 / .bat"
 
@@ -307,24 +505,66 @@ function Invoke-DotnetPublish {
     param(
         [string]$Project,
         [string]$OutputDir,
+        [string]$Runtime = 'win-x64',
         [hashtable]$ExtraProps = @{}
     )
     Ensure-Dir $OutputDir
     $args = @(
         'publish', $Project,
         '-c', 'Release',
-        '-r', 'win-x64',
+        '-r', $Runtime,
         '--self-contained', 'true',
         '-p:PublishSingleFile=true',
         '-p:DebugType=None',
         '-p:DebugSymbols=false',
         '-o', $OutputDir
     )
+    if ($Runtime -like 'win-*') {
+        $args += '-p:EnableWindowsTargeting=true'
+    }
     foreach ($key in $ExtraProps.Keys) {
         $args += "-p:$key=$($ExtraProps[$key])"
     }
     & dotnet @args
-    if ($LASTEXITCODE -ne 0) { throw "dotnet publish 실패: $Project" }
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish 실패: $Project ($Runtime)" }
+}
+
+function New-MacPortableFolder {
+    param(
+        [string]$Project,
+        [string]$DestRoot,
+        [string]$FolderPrefix,
+        [string]$BinaryName,
+        [hashtable]$ExtraProps = @{},
+        [string[]]$ExtraFiles = @()
+    )
+    $created = @()
+    foreach ($pair in @(
+            @{ Rid = 'osx-arm64'; Label = 'arm64' },
+            @{ Rid = 'osx-x64'; Label = 'x64' }
+        )) {
+        $stage = Join-Path $DestRoot ("_stage_" + $pair.Rid)
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        Invoke-DotnetPublish -Project $Project -OutputDir $stage -Runtime $pair.Rid -ExtraProps $ExtraProps
+        $portable = Join-Path $DestRoot ("$FolderPrefix-macOS-" + $pair.Label)
+        if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
+        Ensure-Dir $portable
+        $binSrc = Join-Path $stage $BinaryName
+        if (-not (Test-Path $binSrc)) { throw "$BinaryName 없음 ($($pair.Rid))" }
+        Copy-Item $binSrc (Join-Path $portable $BinaryName) -Force
+        Get-ChildItem $stage -Force | Where-Object { $_.Name -ne $BinaryName } | ForEach-Object {
+            Copy-Item $_.FullName (Join-Path $portable $_.Name) -Recurse -Force
+        }
+        foreach ($extra in $ExtraFiles) {
+            if (Test-Path $extra) {
+                Copy-Item $extra (Join-Path $portable (Split-Path $extra -Leaf)) -Force
+            }
+        }
+        Remove-Item $stage -Recurse -Force
+        Write-Host "  Mac $($pair.Label): $portable"
+        $created += $portable
+    }
+    return $created
 }
 
 function Show-Manifest {
@@ -333,7 +573,7 @@ function Show-Manifest {
         Write-Host "manifest.json 없음: $manifestPath"
         return
     }
-    $raw = [System.IO.File]::ReadAllText($manifestPath)
+    $raw = [System.IO.File]::ReadAllText($manifestPath, [System.Text.UTF8Encoding]::new($false))
     $m = $raw | ConvertFrom-Json
     Write-Host "마지막 빌드: $($m.builtAt)"
     Write-Host "출력 루트: $($m.outRoot)"
@@ -355,7 +595,28 @@ function Show-Manifest {
     }
 }
 
+if ($SetOutRoot) {
+    $OutRoot = Convert-ToFullPath $SetOutRoot
+    Save-BuildConfig -OutRootPath $OutRoot -TargetsValue (Resolve-BuildTarget $Target)
+}
+elseif ($Configure) {
+    $null = Invoke-ConfigureOutRoot
+    return
+}
+else {
+    $OutRoot = Resolve-OutRootPath
+}
+
+Initialize-BuildTargets (Resolve-BuildTarget $Target)
+
+if ($ShowConfig) {
+    Show-BuildConfigInfo
+    return
+}
+
 if ($List) {
+    Show-BuildConfigInfo
+    Write-Host ""
     if (Test-Path $VersionFile) {
         $v = Read-SuiteVersion
         Write-Host ("현재 스위트 버전 파일: {0}.{1}" -f $v.version, $v.build)
@@ -364,6 +625,17 @@ if ($List) {
     }
     Show-Manifest
     return
+}
+
+if ($Menu) {
+    $menuAct = Show-InteractiveMenu
+    if ($menuAct -eq 'quit') { return }
+    $OutRoot = Resolve-OutRootPath
+    Initialize-BuildTargets (Resolve-BuildTarget $Target)
+}
+
+if (-not (Test-Path $BuildConfigPath)) {
+    Save-BuildConfig -OutRootPath $OutRoot -TargetsValue (Resolve-BuildTarget $Target)
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
@@ -395,146 +667,277 @@ function Add-Result {
     $script:results += [pscustomobject]$item
 }
 
+function Sync-BridgeUi {
+    $ps1 = Join-Path $ProjectsRoot 'BroadcastNasBridge\scripts\sync-ui.ps1'
+    $sh = Join-Path $ProjectsRoot 'BroadcastNasBridge\scripts\sync-ui.sh'
+    if (Test-Path $ps1) {
+        & $ps1
+        return
+    }
+    if (Test-Path $sh) {
+        bash $sh
+    }
+}
+
+function Write-MacCommandLauncher([string]$Dir, [string]$BinaryName, [string]$FileName = 'Launch.command') {
+    $path = Join-Path $Dir $FileName
+    $body = @"
+#!/bin/bash
+cd "`$(dirname "`$0")"
+./$BinaryName
+"@
+    Write-Utf8NoBom $path $body.Replace("`r`n", "`n")
+}
+
+# --- BroadcastNasBridge ---
+function Build-BroadcastNasBridge {
+    Write-Step 'BroadcastNasBridge'
+    $repo = Join-Path $ProjectsRoot 'BroadcastNasBridge'
+    $csproj = Join-Path $repo 'BroadcastNasBridge.csproj'
+    if (-not (Test-Path $csproj)) { throw "BroadcastNasBridge 소스 없음: $repo" }
+    $git = Get-GitInfo $ProjectsRoot
+    Stop-IfRunning @('BroadcastNasBridge')
+    Sync-BridgeUi
+
+    $dest = Join-Path $OutRoot 'BroadcastNasBridge'
+    Ensure-Dir $dest
+    $portable = $null
+    $zipPath = $null
+
+    if ($WantWindows) {
+        $stage = Join-Path $dest '_stage'
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        Invoke-DotnetPublish -Project $csproj -OutputDir $stage
+
+        $portable = Join-Path $dest 'BroadcastNasBridge-Windows-x64'
+        if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
+        Ensure-Dir $portable
+        Copy-Item (Join-Path $stage '*') $portable -Recurse -Force
+        $launchBat = Join-Path $repo 'scripts\Launch-BroadcastNasBridge.bat'
+        if (Test-Path $launchBat) { Copy-Item $launchBat $portable -Force }
+        Write-Utf8NoBom (Join-Path $portable 'Start-BroadcastNasBridge.bat') "@echo off`r`ncd /d `"%~dp0`"`r`nstart `"`" BroadcastNasBridge.exe`r`n"
+        Remove-Item $stage -Recurse -Force
+
+        if (-not $SkipZip) {
+            $zipPath = Join-Path $dest "BroadcastNasBridge-Windows-x64-$Stamp.zip"
+            New-ZipFromFolder $portable $zipPath | Out-Null
+        }
+        Write-Host "완료: $portable"
+    }
+
+    if ($WantMac) {
+        $macDirs = New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'BroadcastNasBridge' -BinaryName 'BroadcastNasBridge'
+        foreach ($d in $macDirs) {
+            Write-MacCommandLauncher $d 'BroadcastNasBridge' 'Launch-BroadcastNasBridge.command'
+        }
+    }
+
+    Add-Result -Name 'BroadcastNasBridge' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git
+}
+
 # --- CtrlOne ---
 function Build-CtrlOne {
     Write-Step 'CtrlOne'
     $repo = Join-Path $ProjectsRoot 'CtrlOne'
+    $csproj = Join-Path $repo 'CtrlOne.csproj'
+    if (-not (Test-Path $csproj)) { throw "CtrlOne 소스 없음: $repo" }
     $git = Get-GitInfo $repo
-    Stop-IfRunning @('CtrlOne')
-
     $dest = Join-Path $OutRoot 'CtrlOne'
-    $stage = Join-Path $dest '_stage'
-    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-    Ensure-Dir $stage
-
-    Invoke-DotnetPublish -Project (Join-Path $repo 'CtrlOne.csproj') -OutputDir $stage
-
-    $exe = Join-Path $stage 'CtrlOne.exe'
-    if (-not (Test-Path $exe)) { throw 'CtrlOne.exe 없음' }
-
-    # 최신 실행 폴더 (설정 json은 유지)
-    $keep = @('devices.json', 'presets.json')
-    Get-ChildItem $dest -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notin ($keep + '_stage') } |
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-
-    Copy-Item $exe (Join-Path $dest 'CtrlOne.exe') -Force
-    $demoSrc = Join-Path $stage 'demo-preview'
-    if (Test-Path $demoSrc) {
-        $demoDst = Join-Path $dest 'demo-preview'
-        if (Test-Path $demoDst) { Remove-Item $demoDst -Recurse -Force }
-        Copy-Item $demoSrc $demoDst -Recurse -Force
-    }
-    Remove-Item $stage -Recurse -Force
-
-    $portable = Join-Path $dest 'CtrlOne-Windows-x64'
-    if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
-    Ensure-Dir $portable
-    Copy-Item (Join-Path $dest 'CtrlOne.exe') (Join-Path $portable 'CtrlOne.exe')
-    if (Test-Path (Join-Path $dest 'demo-preview')) {
-        Copy-Item (Join-Path $dest 'demo-preview') (Join-Path $portable 'demo-preview') -Recurse
-    }
-
+    Ensure-Dir $dest
+    $portable = $null
     $zipPath = $null
-    if (-not $SkipZip) {
-        $zipPath = Join-Path $dest "CtrlOne-Windows-x64-$Stamp.zip"
-        New-ZipFromFolder $portable $zipPath | Out-Null
+
+    if ($WantWindows) {
+        Stop-IfRunning @('CtrlOne')
+        $stage = Join-Path $dest '_stage'
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        Ensure-Dir $stage
+
+        Invoke-DotnetPublish -Project $csproj -OutputDir $stage
+
+        $exe = Join-Path $stage 'CtrlOne.exe'
+        if (-not (Test-Path $exe)) { throw 'CtrlOne.exe 없음' }
+
+        $keep = @('devices.json', 'presets.json', 'CtrlOne-macOS-arm64', 'CtrlOne-macOS-x64')
+        Get-ChildItem $dest -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notin ($keep + '_stage') } |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+        Copy-Item $exe (Join-Path $dest 'CtrlOne.exe') -Force
+        $demoSrc = Join-Path $stage 'demo-preview'
+        if (Test-Path $demoSrc) {
+            $demoDst = Join-Path $dest 'demo-preview'
+            if (Test-Path $demoDst) { Remove-Item $demoDst -Recurse -Force }
+            Copy-Item $demoSrc $demoDst -Recurse -Force
+        }
+        Remove-Item $stage -Recurse -Force
+
+        $portable = Join-Path $dest 'CtrlOne-Windows-x64'
+        if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
+        Ensure-Dir $portable
+        Copy-Item (Join-Path $dest 'CtrlOne.exe') (Join-Path $portable 'CtrlOne.exe')
+        if (Test-Path (Join-Path $dest 'demo-preview')) {
+            Copy-Item (Join-Path $dest 'demo-preview') (Join-Path $portable 'demo-preview') -Recurse
+        }
+
+        if (-not $SkipZip) {
+            $zipPath = Join-Path $dest "CtrlOne-Windows-x64-$Stamp.zip"
+            New-ZipFromFolder $portable $zipPath | Out-Null
+        }
+        Write-Host "완료: $dest\CtrlOne.exe"
     }
 
-    Write-Host "완료: $dest\CtrlOne.exe"
-    Add-Result -Name 'CtrlOne' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git -Extra @{ exe = (Join-Path $dest 'CtrlOne.exe') }
+    if ($WantMac) {
+        try {
+            New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'CtrlOne' -BinaryName 'CtrlOne'
+        }
+        catch {
+            Write-Host "  Mac 건너뜀 (CtrlOne): $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
+    Add-Result -Name 'CtrlOne' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git -Extra @{ exe = $(if ($portable) { Join-Path $dest 'CtrlOne.exe' } else { $null }) }
 }
 
 # --- FileChecker ---
 function Build-FileChecker {
     Write-Step 'FileChecker'
     $repo = Join-Path $ProjectsRoot 'FileChecker'
+    $csproj = Join-Path $repo 'FileCheckerFinder.csproj'
+    if (-not (Test-Path $csproj)) { throw "FileChecker 소스 없음: $repo" }
     $git = Get-GitInfo $repo
-    Stop-IfRunning @('FileCheckerFinder')
-
     $dest = Join-Path $OutRoot 'FileChecker'
-    $stage = Join-Path $dest '_stage'
-    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-    Ensure-Dir $stage
-
-    Invoke-DotnetPublish -Project (Join-Path $repo 'FileCheckerFinder.csproj') -OutputDir $stage -ExtraProps @{
-        IncludeNativeLibrariesForSelfExtract = 'true'
-    }
-
-    $exeName = 'FileCheckerFinder.exe'
-    $exe = Join-Path $stage $exeName
-    if (-not (Test-Path $exe)) { throw "$exeName 없음" }
-
-    # data/ 는 배포 패키지에 넣지 않음 (로컬 설정·비밀번호 보호)
-    $portable = Join-Path $dest 'FileChecker-Windows-x64'
-    if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
-    Ensure-Dir $portable
-    Copy-Item $exe (Join-Path $portable $exeName)
-    $batSrc = Join-Path $stage 'Start-FileCheckerFinder.bat'
-    if (-not (Test-Path $batSrc)) { $batSrc = Join-Path $repo 'Start-FileCheckerFinder.bat' }
-    if (Test-Path $batSrc) { Copy-Item $batSrc (Join-Path $portable 'Start-FileCheckerFinder.bat') }
-
-    # 실행용 최신 폴더: exe/bat만 갱신, data/ 유지
     Ensure-Dir $dest
-    Copy-Item $exe (Join-Path $dest $exeName) -Force
-    if (Test-Path $batSrc) { Copy-Item $batSrc (Join-Path $dest 'Start-FileCheckerFinder.bat') -Force }
-    Remove-Item $stage -Recurse -Force
-
+    $portable = $null
     $zipPath = $null
-    if (-not $SkipZip) {
-        $zipPath = Join-Path $dest "FileChecker-Windows-x64-$Stamp.zip"
-        New-ZipFromFolder $portable $zipPath | Out-Null
+
+    if ($WantWindows) {
+        Stop-IfRunning @('FileCheckerFinder')
+        $stage = Join-Path $dest '_stage'
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        Ensure-Dir $stage
+
+        Invoke-DotnetPublish -Project $csproj -OutputDir $stage -ExtraProps @{
+            IncludeNativeLibrariesForSelfExtract = 'true'
+        }
+
+        $exeName = 'FileCheckerFinder.exe'
+        $exe = Join-Path $stage $exeName
+        if (-not (Test-Path $exe)) { throw "$exeName 없음" }
+
+        $portable = Join-Path $dest 'FileChecker-Windows-x64'
+        if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
+        Ensure-Dir $portable
+        Copy-Item $exe (Join-Path $portable $exeName)
+        $batSrc = Join-Path $stage 'Start-FileCheckerFinder.bat'
+        if (-not (Test-Path $batSrc)) { $batSrc = Join-Path $repo 'Start-FileCheckerFinder.bat' }
+        if (Test-Path $batSrc) { Copy-Item $batSrc (Join-Path $portable 'Start-FileCheckerFinder.bat') }
+
+        Copy-Item $exe (Join-Path $dest $exeName) -Force
+        if (Test-Path $batSrc) { Copy-Item $batSrc (Join-Path $dest 'Start-FileCheckerFinder.bat') -Force }
+        Remove-Item $stage -Recurse -Force
+
+        if (-not $SkipZip) {
+            $zipPath = Join-Path $dest "FileChecker-Windows-x64-$Stamp.zip"
+            New-ZipFromFolder $portable $zipPath | Out-Null
+        }
+        Write-Host "완료: $dest\$exeName (배포 zip에는 data 제외)"
     }
 
-    Write-Host "완료: $dest\$exeName (배포 zip에는 data 제외)"
-    Add-Result -Name 'FileChecker' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git -Extra @{ exe = (Join-Path $dest $exeName) }
+    if ($WantMac) {
+        Write-Host '  Mac 생략: FileChecker는 net-windows + WinForms (Windows 전용)' -ForegroundColor Yellow
+    }
+
+    Add-Result -Name 'FileChecker' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git -Extra @{ exe = $(if ($portable) { Join-Path $dest 'FileCheckerFinder.exe' } else { $null }) }
 }
 
 # --- ScheduleDataManager ---
 function Build-ScheduleDataManager {
     Write-Step 'ScheduleDataManager'
     $repo = Join-Path $ProjectsRoot 'ScheduleDataManager'
+    $csproj = Join-Path $repo 'LocalBridge\LocalBridge.csproj'
+    if (-not (Test-Path $csproj)) { throw "ScheduleDataManager 소스 없음: $repo" }
     $git = Get-GitInfo $repo
-    Stop-IfRunning @('BroadcastingSchedule')
-
     $dest = Join-Path $OutRoot 'ScheduleDataManager'
     Ensure-Dir $dest
     $env:SCHEDULE_BUILD_DIR = $dest
-    & (Join-Path $repo 'package-portable.ps1')
-    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw 'ScheduleDataManager package-portable 실패' }
+    $portable = $null
+    $zipPath = $null
 
-    $portable = Join-Path $dest 'BroadcastingSchedule-Windows-x64'
-    $zipPath = Join-Path $dest "BroadcastingSchedule-Windows-x64-$Stamp.zip"
-    if (-not (Test-Path $portable)) { throw "portable 폴더 없음: $portable" }
-    if ($SkipZip -and (Test-Path $zipPath)) {
-        # package script may have created zip; leave it
-    }
-    elseif ($SkipZip) { $zipPath = $null }
-    elseif (-not (Test-Path $zipPath)) {
-        New-ZipFromFolder $portable $zipPath | Out-Null
+    if ($WantWindows) {
+        Stop-IfRunning @('BroadcastingSchedule')
+        $pkg = Join-Path $repo 'package-portable.ps1'
+        if (Test-Path $pkg) {
+            & $pkg
+            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw 'ScheduleDataManager package-portable 실패' }
+        }
+        else {
+            Invoke-DotnetPublish -Project $csproj -OutputDir (Join-Path $dest '_build\win-x64')
+            $portableTmp = Join-Path $dest 'BroadcastingSchedule-Windows-x64'
+            Ensure-Dir $portableTmp
+            Copy-Item (Join-Path $dest '_build\win-x64\BroadcastingSchedule.exe') (Join-Path $portableTmp 'BroadcastingSchedule.exe')
+        }
+
+        $portable = Join-Path $dest 'BroadcastingSchedule-Windows-x64'
+        $zipPath = Join-Path $dest "BroadcastingSchedule-Windows-x64-$Stamp.zip"
+        if (-not (Test-Path $portable)) { throw "portable 폴더 없음: $portable" }
+        if ($SkipZip) { $zipPath = $(if (Test-Path $zipPath) { $zipPath } else { $null }) }
+        elseif (-not (Test-Path $zipPath)) {
+            New-ZipFromFolder $portable $zipPath | Out-Null
+        }
     }
 
-    Add-Result -Name 'ScheduleDataManager' -Status 'ok' -Portable $portable -Zip $(if (Test-Path $zipPath) { $zipPath } else { $null }) -Git $git
+    if ($WantMac) {
+        New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'BroadcastingSchedule' -BinaryName 'BroadcastingSchedule'
+    }
+
+    Add-Result -Name 'ScheduleDataManager' -Status 'ok' -Portable $portable -Zip $(if ($zipPath -and (Test-Path $zipPath)) { $zipPath } else { $null }) -Git $git
 }
 
 # --- WorkLog ---
 function Build-WorkLog {
     Write-Step 'WorkLog'
     $repo = Join-Path $ProjectsRoot 'WorkLog'
+    if (-not (Test-Path $repo)) { throw "WorkLog 소스 없음: $repo" }
     $git = Get-GitInfo $repo
-    Stop-IfRunning @('WorkLog')
-
     $dest = Join-Path $OutRoot 'WorkLog'
     Ensure-Dir $dest
     $env:WORKLOG_BUILD_DIR = $dest
-    & (Join-Path $repo 'package-portable.ps1')
-    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw 'WorkLog package-portable 실패' }
+    $portable = $null
+    $zipPath = $null
 
-    $portable = Join-Path $dest 'WorkLog-Windows-x64'
-    $zipPath = Join-Path $dest "WorkLog-Windows-x64-$Stamp.zip"
-    if (-not (Test-Path $portable)) { throw "portable 폴더 없음: $portable" }
+    if ($WantWindows) {
+        Stop-IfRunning @('WorkLog')
+        $pkg = Join-Path $repo 'package-portable.ps1'
+        if (-not (Test-Path $pkg)) { throw "package-portable.ps1 없음: $pkg" }
+        & $pkg
+        if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw 'WorkLog package-portable 실패' }
 
-    Add-Result -Name 'WorkLog' -Status 'ok' -Portable $portable -Zip $(if (Test-Path $zipPath) { $zipPath } else { $null }) -Git $git
+        $portable = Join-Path $dest 'WorkLog-Windows-x64'
+        $zipPath = Join-Path $dest "WorkLog-Windows-x64-$Stamp.zip"
+        if (-not (Test-Path $portable)) { throw "portable 폴더 없음: $portable" }
+        if ($SkipZip) { $zipPath = $(if (Test-Path $zipPath) { $zipPath } else { $null }) }
+        elseif (-not (Test-Path $zipPath)) {
+            New-ZipFromFolder $portable $zipPath | Out-Null
+        }
+    }
+
+    if ($WantMac) {
+        $macPs1 = Join-Path $repo 'package-mac.ps1'
+        $macSh = Join-Path $repo 'package-mac.sh'
+        if (Test-Path $macPs1) {
+            & $macPs1
+            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw 'WorkLog package-mac 실패' }
+        }
+        elseif (Test-Path $macSh) {
+            bash $macSh
+        }
+        else {
+            Write-Host '  Mac 건너뜀: WorkLog package-mac 스크립트 없음' -ForegroundColor Yellow
+        }
+    }
+
+    Add-Result -Name 'WorkLog' -Status 'ok' -Portable $portable -Zip $(if ($zipPath -and (Test-Path $zipPath)) { $zipPath } else { $null }) -Git $git
 }
 
 # --- ScheduleReader (Python portable) ---
@@ -542,6 +945,13 @@ function Build-ScheduleReader {
     Write-Step 'ScheduleReader'
     $repo = Join-Path $ProjectsRoot 'ScheduleReader'
     $git = Get-GitInfo $repo
+    if (-not (Test-Path $repo)) { throw "ScheduleReader 소스 없음: $repo" }
+
+    if (-not $WantWindows) {
+        Write-Host '  Windows 패키지만 지원 — 이번 대상 OS에서는 건너뜀' -ForegroundColor Yellow
+        Add-Result -Name 'ScheduleReader' -Status 'ok' -Git $git -Extra @{ skipped = 'windows-only' }
+        return
+    }
 
     $dest = Join-Path $OutRoot 'ScheduleReader'
     $portable = Join-Path $dest 'ScheduleReader-portable'
@@ -557,11 +967,13 @@ function Build-ScheduleReader {
 
     Copy-Item (Join-Path $repo 'requirements.txt') (Join-Path $portable 'requirements.txt') -Force
     Copy-Item (Join-Path $repo 'README.md') (Join-Path $portable 'README.md') -Force -ErrorAction SilentlyContinue
+    $srIcon = Join-Path $repo 'assets\app.ico'
+    if (-not (Test-Path $srIcon)) { $srIcon = Join-Path $ProjectsRoot 'assets\icons\ScheduleReader\app.ico' }
+    if (Test-Path $srIcon) { Copy-Item $srIcon (Join-Path $portable 'app.ico') -Force }
 
     $modelsSrc = Join-Path $repo 'models'
     if (Test-Path $modelsSrc) {
-        Write-Host '  models/ 포함 (OCR 모델)'
-        Copy-Item $modelsSrc (Join-Path $portable 'models') -Recurse -Force
+        Write-Host '  models/ 폴더 있음 — 레거시 OCR용일 수 있어 패키지에 넣지 않음' -ForegroundColor Yellow
     }
 
     Ensure-Dir (Join-Path $portable 'input')
@@ -663,8 +1075,7 @@ ScheduleReader 배포 패키지
 4. 이후: serve.bat
 5. 브라우저: http://127.0.0.1:17823
 
-models/ 폴더가 있으면 OCR 모델이 포함됩니다 (용량 큼).
-없으면 첫 OCR 실행 시 한글 모델이 다운로드됩니다.
+교회 월간 일정 엑셀(.xlsx)을 불러와 추출한 뒤 schedule-data.json 으로 내보냅니다.
 '@
     Write-Utf8File -FilePath (Join-Path $portable 'README-DEPLOY.txt') -Content $readmeDeploy
 
@@ -682,13 +1093,16 @@ models/ 폴더가 있으면 OCR 모델이 포함됩니다 (용량 큼).
 $suite = Resolve-SuiteVersion
 Write-Host "방송실 프로그램 일괄 빌드" -ForegroundColor Green
 Write-Host "출력: $OutRoot"
+Write-Host "설정: $(if (Test-Path $BuildConfigPath) { $BuildConfigPath } else { '(이번 빌드에서 기록)' })"
 Write-Host "앱: $($Apps -join ', ')"
+Write-Host "대상: Windows=$WantWindows  Mac=$WantMac"
 Write-Host ("스위트 버전: {0}  build={1}  label={2}" -f $suite.version, $suite.build, $SuiteLabel)
 Write-Host "날짜 스탬프: $Stamp"
 
 foreach ($app in $Apps) {
     try {
         switch ($app) {
+            'BroadcastNasBridge' { Build-BroadcastNasBridge }
             'CtrlOne' { Build-CtrlOne }
             'FileChecker' { Build-FileChecker }
             'ScheduleDataManager' { Build-ScheduleDataManager }
@@ -703,7 +1117,7 @@ foreach ($app in $Apps) {
 }
 
 $failed = @($results | Where-Object { $_.status -eq 'failed' })
-$ok = @($results | Where-Object { $_.status -eq 'ok' -and $_.portable })
+$ok = @($results | Where-Object { $_.status -eq 'ok' })
 
 if (-not $SkipBundle -and $failed.Count -eq 0 -and $ok.Count -gt 0) {
     # 기본 5개 전체 요청이면 통합 zip 필수 생성; 일부만 빌드해도 성공분으로 묶음
@@ -744,6 +1158,10 @@ $manifest = [ordered]@{
     stamp      = $Stamp
     stampTime  = $StampTime
     outRoot    = $OutRoot
+    configFile = $(if (Test-Path $BuildConfigPath) { $BuildConfigPath } else { $null })
+    targets    = (Resolve-BuildTarget $Target)
+    wantWindows = $WantWindows
+    wantMac    = $WantMac
     machine    = $env:COMPUTERNAME
     suite      = [ordered]@{
         name    = $SuiteVersionInfo.name
@@ -805,4 +1223,16 @@ Write-Host "manifest: $manifestPath"
 if ($BundleZipPath) {
     Write-Host "통합 배포: $BundleZipPath" -ForegroundColor Green
 }
+
+# #111: 산출 폴더를 탐색기에서 열기
+try {
+    if (Test-Path -LiteralPath $OutRoot) {
+        Start-Process explorer.exe -ArgumentList $OutRoot
+        Write-Host "Explorer: $OutRoot"
+    }
+}
+catch {
+    Write-Host "Explorer open failed: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 exit 0

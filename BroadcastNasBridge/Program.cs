@@ -13,8 +13,8 @@ var mutexName = OperatingSystem.IsWindows() ? $@"Local\{MutexName}" : MutexName;
 using var mutex = new Mutex(true, mutexName, out var createdNew);
 if (!createdNew)
 {
-    OpenBrowser($"{ListenUrl}/");
-    StartupConsole.WriteLine("BroadcastNasBridge가 이미 실행 중입니다. 시작 인덱스를 엽니다.");
+    OpenBrowser(ResolveOpenUrl(args));
+    StartupConsole.WriteLine("BroadcastNasBridge가 이미 실행 중입니다. 요청한 페이지를 엽니다.");
     return;
 }
 
@@ -60,6 +60,18 @@ builder.Services.AddSingleton<FilesAppStore>();
 
 var app = builder.Build();
 app.UseCors();
+
+// /worklog → /worklog/ (상대 CSS·모듈 경로 깨짐 방지)
+app.Use(async (ctx, next) =>
+{
+    var path = ctx.Request.Path.Value ?? "";
+    if (path is "/worklog" or "/schedule" or "/files")
+    {
+        ctx.Response.Redirect(path + "/" + ctx.Request.QueryString, permanent: false);
+        return;
+    }
+    await next();
+});
 
 var webRoot = new PhysicalFileProvider(Path.Combine(contentRoot, "wwwroot"));
 app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = webRoot });
@@ -108,7 +120,7 @@ lifetime.ApplicationStarted.Register(() =>
     _ = Task.Run(async () =>
     {
         await Task.Delay(400);
-        OpenBrowser($"{ListenUrl}/");
+        OpenBrowser(ResolveOpenUrl(args));
     });
 });
 
@@ -124,8 +136,17 @@ try
 catch (IOException ex) when (ex.Message.Contains("address already in use", StringComparison.OrdinalIgnoreCase) ||
                              ex.InnerException?.Message.Contains("address already in use", StringComparison.OrdinalIgnoreCase) == true)
 {
-    OpenBrowser($"{ListenUrl}/");
+    OpenBrowser(ResolveOpenUrl(args));
     StartupConsole.WriteLine("포트 17820이 이미 사용 중입니다. 기존 브리지를 엽니다.");
+}
+
+static string ResolveOpenUrl(string[] args)
+{
+    var path = args.FirstOrDefault(a =>
+        a.StartsWith('/') && !a.StartsWith("//") && !a.StartsWith("--"));
+    if (string.IsNullOrWhiteSpace(path)) path = "/";
+    if (!path.StartsWith('/')) path = "/" + path;
+    return $"{ListenUrl.TrimEnd('/')}{path}";
 }
 
 static void OpenBrowser(string url)

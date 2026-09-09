@@ -24,7 +24,7 @@
 | **WorkLog** | 일일 작업 일지 — 단독 `17822` 레거시 |
 | **FileChecker** | 렌더링 파일 체크 — 단독 `5187` 레거시 |
 | **CtrlOne** | HyperDeck 등 방송 장비 TCP 제어 (NAS 무관) |
-| **ScheduleReader** | 스케줄 OCR → JSON (로컬; NAS 세션 관리 없음) |
+| **ScheduleReader** | 일정 엑셀 → JSON (로컬; NAS 세션 관리 없음) |
 | **ImgToText** | 이미지→텍스트 보조 도구 |
 | **Builded** | 배포용 빌드 산출물 |
 
@@ -109,26 +109,40 @@
 | WorkLog | .NET LocalBridge / MacBridge + `www/` (+ 선택 `nas-api`) |
 | FileChecker | ASP.NET Core + `wwwroot` (Windows + macOS portable) |
 | CtrlOne | ASP.NET Core + SignalR + HyperDeck TCP |
-| ScheduleReader | Python FastAPI + OCR |
+| ScheduleReader | Python FastAPI + Excel(openpyxl) |
 
 ---
 
 ## 배포 · 최신화 (일괄 빌드)
 
-방송실 5개 앱의 **최신 Windows 배포본**을 한 번에 `Builded`에 뽑고, **버전을 올려** 통합 zip까지 만든다.
+레포가 어디에 있든, **그 머신·OS에서** 해당 OS 산출물을 뽑는다. 산출 폴더는 설정 파일에 기록한다.
 
 | 방법 | 설명 |
 |------|------|
-| **`Build-BroadcastApps.bat`** | 더블클릭 → 전체 빌드 + 통합 zip |
-| `scripts\Build-BroadcastApps.ps1` | PowerShell (옵션 가능) |
+| **`Build-BroadcastApps.bat`** | 더블클릭 → 저장된 경로로 전체 빌드 + 통합 zip |
+| **`Configure-BroadcastBuild.bat`** / `Build-BroadcastApps.bat config` | 산출 폴더 선택 → `broadcast-suite.build.json`에 기록 |
+| `Build-BroadcastApps.bat menu` | 경로·OS 선택 메뉴 후 빌드 |
+| `scripts\Build-BroadcastApps.ps1` | Windows PowerShell (옵션 가능) |
+| `scripts/Build-BroadcastApps.sh` | macOS/Linux (같은 JSON 설정) |
 | `scripts\Show-BuildManifest.bat` | 마지막 빌드·버전 요약 |
+
+**산출 경로 우선순위:** `-OutRoot` / `--out` → 환경 변수 `BROADCAST_BUILD_DIR` → `broadcast-suite.build.json` → `<레포>/Builded`  
+예시 템플릿: `broadcast-suite.build.example.json` (실제 설정 파일은 git 무시)
 
 버전 원본: `broadcast-suite.version.json` (빌드마다 `build` 번호 +1)
 
 ```powershell
 # 전체 (개별 portable + 개별 zip + 통합 zip)
 .\scripts\Build-BroadcastApps.ps1
-# → Builded\BroadcastingApp_1.0.0.1_20260908.zip
+# → <outRoot>\BroadcastingApp_1.0.0.1_20260908.zip
+
+# 산출 경로 기록
+.\scripts\Build-BroadcastApps.ps1 -Configure
+.\scripts\Build-BroadcastApps.ps1 -SetOutRoot E:\Releases
+
+# 이 PC OS만 / Windows+Mac (가능한 앱)
+.\scripts\Build-BroadcastApps.ps1 -Target Host
+.\scripts\Build-BroadcastApps.ps1 -Target All
 
 # 마이너/메이저 버전 올림
 .\scripts\Build-BroadcastApps.ps1 -Bump Minor
@@ -140,40 +154,50 @@
 
 # 마지막 빌드 정보
 .\scripts\Build-BroadcastApps.ps1 -List
+.\scripts\Build-BroadcastApps.ps1 -ShowConfig
+```
+
+```bash
+# Mac
+./scripts/Build-BroadcastApps.sh
+./scripts/Build-BroadcastApps.sh --set-out ~/Releases --target all
+./scripts/Build-BroadcastApps.sh --show-config
 ```
 
 | 산출물 | 경로 |
 |--------|------|
-| 통합 배포 zip | `Builded\BroadcastingApp_<version>.<build>_<yyyyMMdd>.zip` |
-| 최신 포인터 | `Builded\LATEST.txt` |
-| 버전 이력 | `Builded\versions\*.json` |
+| 통합 배포 zip | `<outRoot>\BroadcastingApp_<version>.<build>_<yyyyMMdd>.zip` |
+| 최신 포인터 | `<outRoot>\LATEST.txt` |
+| 버전 이력 | `<outRoot>\versions\*.json` |
 | 앱별 portable | 아래 표 |
 
 통합 zip 안에는 OS별 폴더와 설치 도우미가 들어 있다.
 
 ```
 BroadcastingApp_<label>/
-  Windows/          ← CtrlOne-Windows-x64, FileChecker-…, …
-  Mac/              ← (추후 macOS 산출물)
+  Windows/          ← BroadcastNasBridge-Windows-x64, CtrlOne-…, …
+  Mac/              ← 브리지·CtrlOne·SDM·WorkLog (있는 것만)
   VERSION.txt
   README.txt
   Install-BroadcastApps.bat / .ps1
 ```
 
 설치 시 `Install-BroadcastApps.bat`로 위치를 고르면 **Windows\만** 복사한다 (바탕화면 바로가기 선택 가능).  
-ScheduleReader 패키지의 `models/`는 OCR용으로 **용량이 클 수 있음**. 배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md).
+ScheduleReader는 **엑셀 추출**용 Python 패키지입니다(이미지 OCR 모델 불필요). 배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md).
 
-| 앱 | Builded 산출물 |
+| 앱 | 산출물 (outRoot 아래) |
 |----|----------------|
+| BroadcastNasBridge | `BroadcastNasBridge-Windows-x64\`, macOS arm64/x64 |
 | CtrlOne | `CtrlOne\CtrlOne.exe`, `CtrlOne-Windows-x64-YYYYMMDD.zip` |
-| FileChecker | `FileChecker\FileCheckerFinder.exe`, zip (**data 제외**) |
+| FileChecker | `FileChecker\FileCheckerFinder.exe`, zip (**data 제외**, Windows만) |
 | ScheduleDataManager | `BroadcastingSchedule-Windows-x64\`, zip |
-| WorkLog | `WorkLog-Windows-x64\`, zip |
-| ScheduleReader | `ScheduleReader-portable\` (Python + Setup-And-Run.bat), zip |
+| WorkLog | `WorkLog-Windows-x64\`, zip · macOS `.app` |
+| ScheduleReader | `ScheduleReader-portable\` (Python + Setup-And-Run.bat), zip · Windows만 |
 
-- 요약 파일: `Builded\BUILD-INFO.md`, `Builded\manifest.json`
+- 요약 파일: `BUILD-INFO.md`, `manifest.json`
 - 환경 변수: `BROADCAST_BUILD_DIR`, `WORKLOG_BUILD_DIR`, `SCHEDULE_BUILD_DIR`
 - FileChecker `data/`는 **배포 zip에 넣지 않는다**.
+- FileChecker·ScheduleReader는 Windows 전용. Mac 타겟에서는 건너뛴다.
 
 ---
 

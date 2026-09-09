@@ -1,5 +1,9 @@
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using BroadcastNasBridge.Services;
 
 namespace BroadcastNasBridge.Apps;
@@ -89,10 +93,32 @@ public static class AppRouteMapper
             }
         });
 
+        app.MapPost("/api/active-schedule-file", (ActiveScheduleFileRequest? body, NasService nas) =>
+        {
+            try
+            {
+                var name = body?.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    return Results.BadRequest(new { message = "name이 필요합니다." });
+                nas.SetActiveScheduleJsonFile(name);
+                return Results.Ok(new { scheduleJsonFile = Path.GetFileName(name) });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+        });
+
         app.MapPost("/api/disconnect", (NasService nas) =>
         {
             nas.Disconnect();
             return Results.Ok(nas.Status());
+        });
+
+        app.MapGet("/api/lan-devices", async (CancellationToken ct) =>
+        {
+            try { return Results.Ok(await LanScanner.DiscoverAsync(ct)); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
         });
     }
 
@@ -281,7 +307,11 @@ public static class AppRouteMapper
             }
             catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
         });
-        g.MapGet("/lan-devices", () => Results.Ok(Array.Empty<object>()));
+        g.MapGet("/lan-devices", async (CancellationToken ct) =>
+        {
+            try { return Results.Ok(await LanScanner.DiscoverAsync(ct)); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
     }
 
     public static void MapWorkLogApp(WebApplication app)
@@ -405,7 +435,7 @@ public static class AppRouteMapper
                 var month = request.Query["month"].FirstOrDefault();
                 if (string.IsNullOrWhiteSpace(month))
                     return Results.BadRequest(new { message = "month=YYYY-MM 쿼리가 필요합니다." });
-                store.AppendAudit(month, body);
+                store.AppendAudit(month, EnrichAuditWithClientIp(body, request));
                 return Results.Ok(new { appended = true });
             }
             catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
@@ -420,25 +450,104 @@ public static class AppRouteMapper
             }
             catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
         });
+
+        g.MapGet("/edit-lock", (string date, NasService nas) =>
+        {
+            try
+            {
+                nas.EnsureConnected();
+                BindWorkLog(store, nas);
+                return Results.Ok(new { @lock = store.GetEditLock(date) });
+            }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
+        g.MapPost("/edit-lock/acquire", async (HttpRequest request, NasService nas) =>
+        {
+            try
+            {
+                nas.EnsureConnected();
+                BindWorkLog(store, nas);
+                var body = await JsonSerializer.DeserializeAsync<EditLockRequest>(request.Body, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true,
+                }) ?? throw new ArgumentException("본문이 필요합니다.");
+                var (ok, lockState, conflict) = store.AcquireEditLock(body);
+                if (!ok)
+                    return Results.Json(new { message = "다른 사용자가 작성 중입니다.", @lock = conflict }, statusCode: StatusCodes.Status409Conflict);
+                return Results.Ok(new { @lock = lockState });
+            }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
+        g.MapPost("/edit-lock/heartbeat", async (HttpRequest request, NasService nas) =>
+        {
+            try
+            {
+                nas.EnsureConnected();
+                BindWorkLog(store, nas);
+                var body = await JsonSerializer.DeserializeAsync<EditLockRequest>(request.Body, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true,
+                }) ?? throw new ArgumentException("본문이 필요합니다.");
+                var (ok, lockState, conflict) = store.HeartbeatEditLock(body);
+                if (!ok)
+                    return Results.Json(new { message = "작성 잠금이 없습니다.", @lock = conflict }, statusCode: StatusCodes.Status409Conflict);
+                return Results.Ok(new { @lock = lockState });
+            }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
+        g.MapPost("/edit-lock/release", async (HttpRequest request, NasService nas) =>
+        {
+            try
+            {
+                nas.EnsureConnected();
+                BindWorkLog(store, nas);
+                var body = await JsonSerializer.DeserializeAsync<EditLockRequest>(request.Body, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true,
+                }) ?? throw new ArgumentException("본문이 필요합니다.");
+                store.ReleaseEditLock(body);
+                return Results.Ok(new { released = true });
+            }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
     }
 
     public static void MapFilesApp(WebApplication app)
     {
         var g = app.MapGroup("/files/api");
 
-        g.MapGet("/schedules", async (bool scan, FilesAppStore store, CancellationToken ct) =>
-            Results.Ok(await store.GetSchedulesAsync(scan, ct)));
         g.MapPost("/schedules", async (FilesScheduleInput input, FilesAppStore store, CancellationToken ct) =>
-            Results.Ok(await store.AddScheduleAsync(input, ct)));
+        {
+            try { return Results.Ok(await store.AddScheduleAsync(input, ct)); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
         g.MapDelete("/schedules/{id:guid}", async (Guid id, FilesAppStore store, CancellationToken ct) =>
-            await store.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
+        {
+            try
+            {
+                return await store.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound();
+            }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
         g.MapGet("/schedules/export", async (FilesAppStore store, CancellationToken ct) =>
             Results.File(await store.ExportAsync(ct), "application/json", "schedules.json"));
         g.MapPost("/schedules/import", async (IFormFile file, FilesAppStore store, CancellationToken ct) =>
         {
-            await using var stream = file.OpenReadStream();
-            var count = await store.ImportAsync(stream, ct);
-            return Results.Ok(new { count });
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                var count = await store.ImportAsync(stream, ct);
+                return Results.Ok(new { count });
+            }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
+        g.MapGet("/schedules", async (bool scan, FilesAppStore store, CancellationToken ct) =>
+        {
+            try { return Results.Ok(await store.GetSchedulesAsync(scan, ct)); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
         });
         g.MapGet("/settings", async (FilesAppStore store, CancellationToken ct) =>
             Results.Ok(await store.GetSettingsAsync(ct)));
@@ -489,6 +598,40 @@ public static class AppRouteMapper
         });
     }
 
+    private static string EnrichAuditWithClientIp(string body, HttpRequest request)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(body) ? "{}" : body.Trim();
+        var node = JsonNode.Parse(trimmed)?.AsObject()
+            ?? throw new ArgumentException("감사 로그 JSON이 올바르지 않습니다.");
+        node["ip"] = ResolveClientIp(request);
+        return node.ToJsonString();
+    }
+
+    private static string ResolveClientIp(HttpRequest request)
+    {
+        var remote = request.HttpContext.Connection.RemoteIpAddress;
+        if (remote is not null)
+        {
+            if (remote.IsIPv4MappedToIPv6)
+                remote = remote.MapToIPv4();
+            if (!IPAddress.IsLoopback(remote))
+                return remote.ToString();
+        }
+
+        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (nic.OperationalStatus != OperationalStatus.Up) continue;
+            if (nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
+            foreach (var addr in nic.GetIPProperties().UnicastAddresses)
+            {
+                if (addr.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(addr.Address))
+                    return addr.Address.ToString();
+            }
+        }
+
+        return remote?.ToString() ?? "";
+    }
+
     private sealed record ConnectBody(string? Host, string? Share, string? Username, string? Password);
     private sealed record DocumentLinkBody(string FileName, string ScheduleId, string ScheduleDate, string ScheduleTitle);
     private sealed record OpenLoc(string Path);
@@ -533,7 +676,50 @@ public static class UiAssetSync
             var text = File.ReadAllText(appJs, Encoding.UTF8);
             text = text.Replace("const API_BASE = \"\";", "const API_BASE = \"/schedule\";", StringComparison.Ordinal);
             text = text.Replace("const API_BASE = '';", "const API_BASE = '/schedule';", StringComparison.Ordinal);
-            // 세션 bye는 브리지 grace와 맞춤 — NotifyUiClosing
+            // 브리지 이미 연결 시 로그인 화면 건너뛰기
+            if (!text.Contains("tryEnterFromBridgeOrLogin", StringComparison.Ordinal))
+            {
+                const string helper = """
+
+async function tryEnterFromBridgeOrLogin() {
+  try {
+    const r = await fetch(`${API_BASE}/api/status`, { cache: "no-store" });
+    if (!r.ok) throw new Error("status");
+    const s = await r.json();
+    if (!s.connected) throw new Error("not connected");
+    bridgeAlive = true;
+    bridgeConnected = true;
+    connectionRoot = s.root || "";
+    const filesRes = await fetch(`${API_BASE}/api/files`, { cache: "no-store" });
+    const files = filesRes.ok ? await filesRes.json() : [];
+    const list = Array.isArray(files) ? files : [];
+    const preferred = typeof applyJsonFileOptions === "function" ? applyJsonFileOptions(list) : "";
+    if (preferred) {
+      try { await loadSelectedBridgeFile(preferred); } catch (_) { /* 로컬로 진입 */ }
+    }
+    if (typeof updateConnectionUi === "function") {
+      updateConnectionUi({
+        state: "linked",
+        label: "공유 연결됨",
+        detail: connectionRoot || "브리지 NAS 연결됨",
+        pathText: preferred || "",
+        syncText: preferred ? `NAS 연결됨 · ${preferred}` : "NAS 연결됨",
+        syncState: "linked",
+      });
+    }
+    enterAppShell();
+    return;
+  } catch (_) {
+    showLoginScreen();
+  }
+}
+
+""";
+                text += helper;
+            }
+            text = text.Replace("\nshowLoginScreen();\n", "\ntryEnterFromBridgeOrLogin();\n", StringComparison.Ordinal);
+            if (text.EndsWith("showLoginScreen();", StringComparison.Ordinal))
+                text = text[..^"showLoginScreen();".Length] + "tryEnterFromBridgeOrLogin();";
             File.WriteAllText(Path.Combine(dest, "app.js"), text, Encoding.UTF8);
         }
         var icons = Path.Combine(src, "assets", "icons");
@@ -551,6 +737,17 @@ public static class UiAssetSync
         if (!Directory.Exists(src)) return;
         foreach (var name in new[] { "index.html", "styles.css", "templates.js" })
             CopyFile(Path.Combine(src, name), Path.Combine(dest, name));
+        var indexPath = Path.Combine(dest, "index.html");
+        if (File.Exists(indexPath))
+        {
+            var html = File.ReadAllText(indexPath, Encoding.UTF8);
+            // 브리지에서는 절대 경로 — /worklog(슬래시 없음)에서도 CSS·JS가 로드되도록
+            html = html.Replace("href=\"/styles.css\"", "href=\"/worklog/styles.css\"");
+            html = html.Replace("href=\"styles.css\"", "href=\"/worklog/styles.css\"");
+            html = html.Replace("src=\"/app.js\"", "src=\"/worklog/app.js\"");
+            html = html.Replace("src=\"app.js\"", "src=\"/worklog/app.js\"");
+            File.WriteAllText(indexPath, html, Encoding.UTF8);
+        }
         var appJs = Path.Combine(src, "app.js");
         if (File.Exists(appJs))
         {
@@ -571,6 +768,10 @@ public static class UiAssetSync
                 "return 'http://127.0.0.1:17822';",
                 "return '/worklog';",
                 StringComparison.Ordinal);
+            text = text.Replace("from \"/templates.js\"", "from \"/worklog/templates.js\"");
+            text = text.Replace("from '/templates.js'", "from '/worklog/templates.js'");
+            text = text.Replace("from \"./templates.js\"", "from \"/worklog/templates.js\"");
+            text = text.Replace("from './templates.js'", "from '/worklog/templates.js'");
             File.WriteAllText(Path.Combine(dest, "app.js"), text, Encoding.UTF8);
         }
     }
@@ -588,7 +789,32 @@ public static class UiAssetSync
                 var text = File.ReadAllText(file, Encoding.UTF8);
                 text = text.Replace("fetch(url, options)", "fetch(url.startsWith('/api/') ? '/files' + url : url, options)");
                 text = text.Replace("window.location.href = '/api/", "window.location.href = '/files/api/");
+                // 브리지: 자체 스케줄 등록/가져오기 대신 SDM Recording 목록 사용 (서버가 GET 시 자동 동기화)
+                text = text.Replace(
+                    "if(action === 'schedule') openModal('schedule');",
+                    "if(action === 'schedule') { toast('작업 목록은 ScheduleDataManager의 Recording 일정에서 자동으로 가져옵니다.'); return; }");
+                text = text.Replace(
+                    "if(action === 'import-schedules') $('#schedule-import').click();",
+                    "if(action === 'import-schedules') { toast('브리지에서는 SDM 공유 스케줄만 사용합니다.'); return; }");
+                text = text.Replace(
+                    "등록된 스케줄이 없습니다",
+                    "Recording 일정이 없습니다");
                 File.WriteAllText(Path.Combine(dest, name), text, Encoding.UTF8);
+            }
+            else if (name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+            {
+                var html = File.ReadAllText(file, Encoding.UTF8);
+                html = System.Text.RegularExpressions.Regex.Replace(
+                    html,
+                    """<button class="nav-button active" data-action="schedule">[^<]*</button>""",
+                    """<button class="nav-button" data-action="refresh" title="SDM Recording sync">↻ SDM 동기화</button>""");
+                html = System.Text.RegularExpressions.Regex.Replace(
+                    html,
+                    """<h3>[^<]*</h3><p>-</p><button class="primary" data-action="schedule">[^<]*</button>""",
+                    """<h3>Recording 일정이 없습니다</h3><p>SDM 스케줄의 preparation에 Recording이 있는 항목만 표시됩니다</p><button class="primary" data-action="refresh">목록 새로고침</button>""");
+                html = html.Replace("href=\"styles.css\"", "href=\"/files/styles.css\"");
+                html = html.Replace("src=\"app.js\"", "src=\"/files/app.js\"");
+                File.WriteAllText(Path.Combine(dest, name), html, Encoding.UTF8);
             }
             else
             {
@@ -604,3 +830,5 @@ public static class UiAssetSync
         File.Copy(from, to, overwrite: true);
     }
 }
+
+file sealed record ActiveScheduleFileRequest(string? Name);

@@ -44,74 +44,59 @@ public sealed class FilesAppStore
 
     public async Task<IReadOnlyList<object>> GetSchedulesAsync(bool forceScan, CancellationToken ct)
     {
-        await _lock.WaitAsync(ct);
-        try
+        // 브리지: 자체 schedules.json이 아니라 SDM 공유 JSON의 Recording만 작업 목록
+        List<FilesStoredSchedule> schedules;
+        if (_nas.IsConnected)
         {
-            var schedules = await ReadAsync<List<FilesStoredSchedule>>(_schedulesFile, ct) ?? [];
-            var settings = await EffectiveSettingsAsync(ct);
-            var dates = schedules.Select(s => s.Input.Date).ToHashSet();
-            var local = IndexFiles(settings.LocalPath, forceScan);
-            var nas = IndexFiles(_nas.MediaRoot ?? "", forceScan);
-            return schedules
-                .OrderByDescending(s => s.Input.Date)
-                .Select(s => ToDto(s, local, nas))
-                .Cast<object>()
-                .ToList();
+            schedules = await LoadRecordingFromSdmAsync(ct);
+            await _lock.WaitAsync(ct);
+            try { await WriteAsync(_schedulesFile, schedules, ct); }
+            finally { _lock.Release(); }
         }
-        finally { _lock.Release(); }
+        else
+        {
+            await _lock.WaitAsync(ct);
+            try { schedules = await ReadAsync<List<FilesStoredSchedule>>(_schedulesFile, ct) ?? []; }
+            finally { _lock.Release(); }
+        }
+
+        var settings = await EffectiveSettingsAsync(ct);
+        var local = IndexFiles(settings.LocalPath, forceScan);
+        var nas = IndexFiles(_nas.MediaRoot ?? "", forceScan);
+        return schedules
+            .OrderByDescending(s => s.Input.Date)
+            .Select(s => ToDto(s, local, nas))
+            .Cast<object>()
+            .ToList();
     }
 
-    public async Task<object> AddScheduleAsync(FilesScheduleInput input, CancellationToken ct)
+    public Task<object> AddScheduleAsync(FilesScheduleInput input, CancellationToken ct)
     {
-        await _lock.WaitAsync(ct);
-        try
-        {
-            var schedules = await ReadAsync<List<FilesStoredSchedule>>(_schedulesFile, ct) ?? [];
-            var item = new FilesStoredSchedule(Guid.NewGuid(), input);
-            schedules.Add(item);
-            await WriteAsync(_schedulesFile, schedules, ct);
-            var settings = await EffectiveSettingsAsync(ct);
-            return ToDto(item, IndexFiles(settings.LocalPath, false), IndexFiles(_nas.MediaRoot ?? "", false));
-        }
-        finally { _lock.Release(); }
+        ct.ThrowIfCancellationRequested();
+        throw new InvalidOperationException(
+            "브리지 FileChecker는 ScheduleDataManager 공유 스케줄만 사용합니다. SDM에서 preparation에 Recording을 넣어 주세요.");
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    public Task<bool> DeleteAsync(Guid id, CancellationToken ct)
     {
-        await _lock.WaitAsync(ct);
-        try
-        {
-            var schedules = await ReadAsync<List<FilesStoredSchedule>>(_schedulesFile, ct) ?? [];
-            var removed = schedules.RemoveAll(s => s.Id == id);
-            if (removed == 0) return false;
-            await WriteAsync(_schedulesFile, schedules, ct);
-            return true;
-        }
-        finally { _lock.Release(); }
+        ct.ThrowIfCancellationRequested();
+        throw new InvalidOperationException(
+            "작업 목록은 SDM 스케줄에서 파생됩니다. 일정 삭제는 ScheduleDataManager에서 하세요.");
     }
 
     public async Task<byte[]> ExportAsync(CancellationToken ct)
     {
-        await _lock.WaitAsync(ct);
-        try
-        {
-            var schedules = await ReadAsync<List<FilesStoredSchedule>>(_schedulesFile, ct) ?? [];
-            return JsonSerializer.SerializeToUtf8Bytes(schedules, _jsonOptions);
-        }
-        finally { _lock.Release(); }
+        var schedules = _nas.IsConnected
+            ? await LoadRecordingFromSdmAsync(ct)
+            : await ReadAsync<List<FilesStoredSchedule>>(_schedulesFile, ct) ?? [];
+        return JsonSerializer.SerializeToUtf8Bytes(schedules, _jsonOptions);
     }
 
-    public async Task<int> ImportAsync(Stream stream, CancellationToken ct)
+    public Task<int> ImportAsync(Stream stream, CancellationToken ct)
     {
-        var schedules = await JsonSerializer.DeserializeAsync<List<FilesStoredSchedule>>(stream, _jsonOptions, ct)
-            ?? throw new JsonException("스케줄 데이터가 없습니다.");
-        await _lock.WaitAsync(ct);
-        try
-        {
-            await WriteAsync(_schedulesFile, schedules, ct);
-            return schedules.Count;
-        }
-        finally { _lock.Release(); }
+        ct.ThrowIfCancellationRequested();
+        throw new InvalidOperationException(
+            "브리지에서는 자체 schedules.json을 불러오지 않습니다. SDM 공유 JSON을 사용합니다.");
     }
 
     public async Task<FilesSettings> GetSettingsAsync(CancellationToken ct) =>
@@ -153,43 +138,108 @@ public sealed class FilesAppStore
 
     public async Task<object> SyncFromScheduleAsync(CancellationToken ct)
     {
-        _nas.EnsureConnected();
-        var scheduleRoot = _nas.ScheduleRoot
-            ?? throw new InvalidOperationException("스케줄 루트가 없습니다.");
-        var cfg = _nas.Config;
-        var fileName = string.IsNullOrWhiteSpace(cfg.ScheduleJsonFile)
-            ? Directory.EnumerateFiles(scheduleRoot, "*.json")
-                .Select(Path.GetFileName)
-                .Where(n => n is not null && !n.StartsWith('_'))
-                .Cast<string>()
-                .OrderByDescending(n => n)
-                .FirstOrDefault()
-            : cfg.ScheduleJsonFile;
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new InvalidOperationException("가져올 스케줄 JSON이 없습니다.");
-
-        var path = Path.Combine(scheduleRoot, fileName);
-        if (!File.Exists(path))
-            throw new FileNotFoundException(fileName);
-
-        using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(path, ct));
-        var imported = new List<FilesStoredSchedule>();
-        if (doc.RootElement.TryGetProperty("schedules", out var arr) && arr.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in arr.EnumerateArray())
-            {
-                if (!TryMapSchedule(item, out var input)) continue;
-                imported.Add(new FilesStoredSchedule(Guid.NewGuid(), input));
-            }
-        }
-
+        var imported = await LoadRecordingFromSdmAsync(ct);
         await _lock.WaitAsync(ct);
         try
         {
             await WriteAsync(_schedulesFile, imported, ct);
-            return new { count = imported.Count, message = $"Recording 일정 {imported.Count}개 가져옴 ({fileName})" };
+            return new { count = imported.Count, message = $"Recording 일정 {imported.Count}개 동기화 (SDM 공유 JSON)" };
         }
         finally { _lock.Release(); }
+    }
+
+    /// <summary>SDM 공유 스케줄 JSON에서 preparation∋Recording 만 작업 목록으로 변환.</summary>
+    private async Task<List<FilesStoredSchedule>> LoadRecordingFromSdmAsync(CancellationToken ct)
+    {
+        _nas.EnsureConnected();
+        var scheduleRoot = _nas.ScheduleRoot
+            ?? throw new InvalidOperationException("스케줄 루트가 없습니다. NAS 설정을 확인하세요.");
+        var path = ResolveSdmScheduleJsonPath(scheduleRoot)
+            ?? throw new InvalidOperationException(
+                "SDM 스케줄 JSON을 찾을 수 없습니다. Temp DATA\\_data 아래 *.json 을 확인하세요.");
+
+        // 해석된 파일을 브리지 설정에 남겨 SDM·FC가 동일 파일을 쓰도록 함
+        if (string.IsNullOrWhiteSpace(_nas.Config.ScheduleJsonFile))
+            _nas.SetActiveScheduleJsonFile(Path.GetFileName(path));
+
+        await using var stream = File.OpenRead(path);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        var root = doc.RootElement;
+        JsonElement arr;
+        if (root.ValueKind == JsonValueKind.Array)
+            arr = root;
+        else if (root.TryGetProperty("schedules", out var nested) && nested.ValueKind == JsonValueKind.Array)
+            arr = nested;
+        else
+            throw new InvalidOperationException($"스케줄 JSON은 배열이어야 합니다: {Path.GetFileName(path)}");
+
+        var imported = new List<FilesStoredSchedule>();
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (!HasRecordingPreparation(item)) continue;
+            if (!TryMapSchedule(item, out var input)) continue;
+            imported.Add(new FilesStoredSchedule(StableId(item), input));
+        }
+        return imported;
+    }
+
+    private string? ResolveSdmScheduleJsonPath(string scheduleRoot)
+    {
+        // ScheduleDataManager pickPreferredJsonFile 과 동일 규칙
+        var files = Directory.EnumerateFiles(scheduleRoot, "*.json")
+            .Select(Path.GetFileName)
+            .Where(name => name is not null && IsSdmScheduleJsonCandidate(name))
+            .Cast<string>()
+            .ToList();
+        if (files.Count == 0) return null;
+
+        var cfg = _nas.Config;
+        var remembered = string.IsNullOrWhiteSpace(cfg.ScheduleJsonFile)
+            ? ""
+            : Path.GetFileName(cfg.ScheduleJsonFile.Trim());
+        if (!string.IsNullOrWhiteSpace(remembered))
+        {
+            var hit = files.FirstOrDefault(f =>
+                f.Equals(remembered, StringComparison.OrdinalIgnoreCase));
+            if (hit is not null) return Path.Combine(scheduleRoot, hit);
+
+            // 설정이 루트 외 절대경로면 파일 존재 시 그대로 사용
+            if (Path.IsPathRooted(cfg.ScheduleJsonFile!) && File.Exists(cfg.ScheduleJsonFile))
+                return cfg.ScheduleJsonFile;
+        }
+
+        string[] preferred =
+        [
+            "schedule-data.json",
+            "scheduledata.json",
+            "schedule.json",
+        ];
+        foreach (var name in preferred)
+        {
+            var hit = files.FirstOrDefault(f =>
+                f.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (hit is not null) return Path.Combine(scheduleRoot, hit);
+        }
+
+        var soft = files.FirstOrDefault(f =>
+            f.Contains("schedule", StringComparison.OrdinalIgnoreCase));
+        if (soft is not null) return Path.Combine(scheduleRoot, soft);
+
+        var sorted = files
+            .OrderBy(f => f, StringComparer.Create(new System.Globalization.CultureInfo("ko-KR"), ignoreCase: false))
+            .First();
+        return Path.Combine(scheduleRoot, sorted);
+    }
+
+    private static bool IsSdmScheduleJsonCandidate(string name)
+    {
+        if (name.StartsWith('_')) return false;
+        if (name.Contains("work_log", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Contains("backup", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("official-documents.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("links.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("_shared_notice.json", StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
     }
 
     private async Task<FilesSettings> EffectiveSettingsAsync(CancellationToken ct)
@@ -205,23 +255,113 @@ public sealed class FilesAppStore
             ScheduleJsonPath: cfg.ScheduleJsonFile);
     }
 
+    private static bool HasRecordingPreparation(JsonElement item)
+    {
+        if (item.TryGetProperty("recording", out var recFlag))
+        {
+            if (recFlag.ValueKind == JsonValueKind.True) return true;
+            if (recFlag.ValueKind == JsonValueKind.String &&
+                recFlag.GetString()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+                return true;
+        }
+
+        if (!item.TryGetProperty("preparation", out var prep))
+            return false;
+
+        if (prep.ValueKind == JsonValueKind.Object)
+        {
+            if (prep.TryGetProperty("recording", out var nested) && nested.ValueKind == JsonValueKind.True)
+                return true;
+            if (prep.TryGetProperty("Recording", out var nested2) && nested2.ValueKind == JsonValueKind.True)
+                return true;
+        }
+
+        if (prep.ValueKind != JsonValueKind.Array)
+            return false;
+
+        foreach (var value in prep.EnumerateArray())
+        {
+            if (value.ValueKind == JsonValueKind.String &&
+                value.GetString()?.Equals("Recording", StringComparison.OrdinalIgnoreCase) == true)
+                return true;
+        }
+        return false;
+    }
+
+    private static Guid StableId(JsonElement item)
+    {
+        if (item.TryGetProperty("id", out var idEl))
+        {
+            if (idEl.ValueKind == JsonValueKind.String && Guid.TryParse(idEl.GetString(), out var g))
+                return g;
+            if (idEl.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(idEl.GetString()))
+            {
+                using var md5 = System.Security.Cryptography.MD5.Create();
+                var bytes = System.Text.Encoding.UTF8.GetBytes(idEl.GetString()!);
+                return new Guid(md5.ComputeHash(bytes));
+            }
+        }
+        return Guid.NewGuid();
+    }
+
     private static bool TryMapSchedule(JsonElement item, out FilesScheduleInput input)
     {
         input = default!;
         try
         {
-            var dateStr = item.TryGetProperty("date", out var d) ? d.GetString()
-                : item.TryGetProperty("Date", out var d2) ? d2.GetString() : null;
+            var dateStr = GetStringProp(item, "scheduleDate")
+                ?? GetStringProp(item, "releaseDate")
+                ?? GetStringProp(item, "date")
+                ?? GetStringProp(item, "Date");
             if (string.IsNullOrWhiteSpace(dateStr) || !DateOnly.TryParse(dateStr, out var date))
                 return false;
-            var title = item.TryGetProperty("title", out var t) ? t.GetString()
-                : item.TryGetProperty("description", out var desc) ? desc.GetString() : "";
+            var title = GetStringProp(item, "scheduleTitle")
+                ?? GetStringProp(item, "title")
+                ?? GetStringProp(item, "description")
+                ?? "";
             if (string.IsNullOrWhiteSpace(title)) return false;
-            input = new FilesScheduleInput(date, title!, null, false, null, false, null, false, false);
+            var speaker = GetStringProp(item, "sermonSpeaker") ?? GetStringProp(item, "instructor");
+            var memo = GetStringProp(item, "preaparationNote")
+                ?? GetStringProp(item, "preparationNote")
+                ?? GetStringProp(item, "accessoryInfo")
+                ?? GetStringProp(item, "memo");
+            string? startTime = null;
+            var hasStart = false;
+            if (item.TryGetProperty("startTime", out var st))
+            {
+                if (st.ValueKind == JsonValueKind.Number && st.TryGetInt32(out var num) && num is >= 0 and <= 2359)
+                {
+                    var hour = num / 100;
+                    var minute = num % 100;
+                    if (hour is >= 0 and <= 23 && minute is >= 0 and <= 59)
+                    {
+                        startTime = $"{hour:D2}:{minute:D2}";
+                        hasStart = true;
+                    }
+                }
+                else if (st.ValueKind == JsonValueKind.String)
+                {
+                    startTime = st.GetString();
+                    hasStart = !string.IsNullOrWhiteSpace(startTime);
+                }
+            }
+            input = new FilesScheduleInput(
+                date,
+                title.Trim(),
+                string.IsNullOrWhiteSpace(memo) ? null : memo.Trim(),
+                hasStart,
+                startTime,
+                !string.IsNullOrWhiteSpace(speaker),
+                string.IsNullOrWhiteSpace(speaker) ? null : speaker.Trim(),
+                false,
+                false);
             return true;
         }
         catch { return false; }
     }
+
+    private static string? GetStringProp(JsonElement item, string name) =>
+        item.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.String ? el.GetString() : null;
 
     private static List<string> IndexFiles(string root, bool _)
     {

@@ -54,4 +54,4 @@ BroadcastingApp_<label>\
 - [ ] Python 3.11+ (Store 앱 실행 별칭의 python 끄기)
 - [ ] `Windows\ScheduleReader-portable\Setup-And-Run.bat` 최초 1회 → 이후 `serve.bat`
 - [ ] http://127.0.0.1:17823
-- [ ] `models/` 포함 zip은 용량이 큼 — 없으면 첫 OCR 시 다운로드
+- [ ] 월간 일정 `.xlsx` 불러오기 → 추출 → `schedule-data.json` → SDM 가져오기

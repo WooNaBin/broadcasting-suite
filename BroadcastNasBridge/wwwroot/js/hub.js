@@ -1,7 +1,29 @@
 (() => {
   const badge = document.getElementById("badge");
-  const detail = document.getElementById("status-detail");
+  const nasInfo = document.getElementById("nas-info");
   const setupBtn = document.getElementById("btn-setup");
+
+  function hideInfo() {
+    nasInfo.hidden = true;
+    nasInfo.innerHTML = "";
+  }
+
+  function showInfo(data) {
+    const rows = [
+      ["NAS", data.host || ""],
+      ["스케줄", data.scheduleRoot || ""],
+      ["일지", data.workLogRoot || ""],
+      ["미디어", data.mediaRoot || ""],
+    ].filter(([, v]) => v);
+    if (rows.length === 0) {
+      hideInfo();
+      return;
+    }
+    nasInfo.hidden = false;
+    nasInfo.innerHTML = rows
+      .map(([k, v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`)
+      .join("");
+  }
 
   async function refresh() {
     try {
@@ -10,19 +32,17 @@
       if (data.connected) {
         badge.textContent = "NAS 연결됨";
         badge.className = "badge ok";
-        detail.textContent = [data.scheduleRoot, data.workLogRoot, data.mediaRoot]
-          .filter(Boolean)
-          .join(" · ");
+        showInfo(data);
       } else {
         badge.textContent = "미연결";
         badge.className = "badge bad";
-        detail.textContent = data.lastError || "앱을 열려면 먼저 NAS 설정이 필요합니다.";
+        hideInfo();
       }
       return data;
     } catch (err) {
       badge.textContent = "브리지 오류";
       badge.className = "badge warn";
-      detail.textContent = String(err);
+      hideInfo();
       return null;
     }
   }

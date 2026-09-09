@@ -1,15 +1,27 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   BroadcastingApp 통합 패키지 설치 (Windows 폴더만 복사).
 .DESCRIPTION
   이 스크립트는 통합 zip 루트(Windows / Mac / VERSION.txt 옆)에 둡니다.
-  Windows\* 내용을 선택한 설치 폴더로 복사하고, 선택 시 바탕화면 바로가기를 만듭니다.
+  Windows\* 내용을 선택한 설치 폴더로 복사하고, 선택 시 바탕화면\방송실 프로그램 폴더에 바로가기를 만듭니다.
+  스케줄·일지·파일체크는 BroadcastNasBridge(17820)로 엽니다.
 #>
 [CmdletBinding()]
 param(
     [string]$InstallDir = ''
 )
+
+# Windows PowerShell 5.1: 파일은 UTF-8 BOM. 콘솔이 65001이면 출력도 UTF-8, 아니면 OEM(한글 Windows는 CP949).
+try {
+    if ([Console]::OutputEncoding.CodePage -eq 65001) {
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        [Console]::InputEncoding = $utf8
+        [Console]::OutputEncoding = $utf8
+        $OutputEncoding = $utf8
+    }
+}
+catch { }
 
 $ErrorActionPreference = 'Stop'
 $BundleRoot = $PSScriptRoot
@@ -21,19 +33,50 @@ if (-not (Test-Path $WindowsSrc)) {
     exit 1
 }
 
-$defaultDir = Join-Path $env:LOCALAPPDATA 'BroadcastingApp'
-if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+function Select-InstallFolder([string]$DefaultPath) {
     Write-Host ""
     Write-Host "방송실 프로그램 설치"
     Write-Host "===================="
-    Write-Host "기본 설치 위치: $defaultDir"
-    $inputDir = Read-Host "설치 폴더 (Enter = 기본값)"
-    if ([string]::IsNullOrWhiteSpace($inputDir)) {
-        $InstallDir = $defaultDir
+    Write-Host "기본 설치 위치: $DefaultPath"
+    Write-Host "폴더 선택 창이 열립니다. 취소하면 기본 위치에 설치합니다."
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        [System.Windows.Forms.Application]::EnableVisualStyles()
+        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dlg.Description = '방송실 프로그램을 설치할 폴더를 선택하세요'
+        $dlg.ShowNewFolderButton = $true
+        $start = $DefaultPath
+        if (-not (Test-Path $start)) {
+            $parent = Split-Path $start -Parent
+            if (Test-Path $parent) { $start = $parent }
+        }
+        if (Test-Path $start) { $dlg.SelectedPath = $start }
+
+        $owner = New-Object System.Windows.Forms.Form
+        $owner.TopMost = $true
+        $owner.ShowInTaskbar = $false
+        $owner.WindowState = 'Minimized'
+        $result = $dlg.ShowDialog($owner)
+        $owner.Dispose()
+
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK -and -not [string]::IsNullOrWhiteSpace($dlg.SelectedPath)) {
+            return $dlg.SelectedPath
+        }
     }
-    else {
-        $InstallDir = $inputDir.Trim().Trim('"')
+    catch {
+        Write-Host "폴더 창을 열 수 없습니다: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "기본 위치에 설치합니다."
     }
+    Write-Host "기본 위치로 설치합니다."
+    return $DefaultPath
+}
+
+$defaultDir = Join-Path $env:LOCALAPPDATA 'BroadcastingApp'
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+    $InstallDir = Select-InstallFolder $defaultDir
+}
+else {
+    $InstallDir = $InstallDir.Trim().Trim('"')
 }
 
 Write-Host ""
@@ -57,27 +100,82 @@ Write-Host "복사 완료." -ForegroundColor Green
 $shortcutAnswer = Read-Host "바탕화면에 바로가기를 만들까요? (Y/N)"
 if ($shortcutAnswer -match '^[Yy]') {
     $desktop = [Environment]::GetFolderPath('Desktop')
+    $shortcutDir = Join-Path $desktop '방송실 프로그램'
+    New-Item -ItemType Directory -Path $shortcutDir -Force | Out-Null
     $wsh = New-Object -ComObject WScript.Shell
 
+    $bridgeExe = Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64\BroadcastNasBridge.exe'
     $targets = @(
-        @{ Name = 'CtrlOne'; Rel = 'CtrlOne-Windows-x64\CtrlOne.exe' },
-        @{ Name = 'FileChecker'; Rel = 'FileChecker-Windows-x64\FileCheckerFinder.exe' },
-        @{ Name = 'BroadcastingSchedule'; Rel = 'BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe' },
-        @{ Name = 'WorkLog'; Rel = 'WorkLog-Windows-x64\WorkLog.exe' },
-        @{ Name = 'ScheduleReader'; Rel = 'ScheduleReader-portable\Setup-And-Run.bat' }
+        @{
+            Name = '방송실 프로그램 시작'
+            Target = $bridgeExe
+            Args = ''
+            WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
+            Icon = $bridgeExe
+        },
+        @{
+            Name = '레코더 컨트롤러'
+            Target = (Join-Path $InstallDir 'CtrlOne-Windows-x64\CtrlOne.exe')
+            Args = ''
+            WorkDir = (Join-Path $InstallDir 'CtrlOne-Windows-x64')
+            Icon = (Join-Path $InstallDir 'CtrlOne-Windows-x64\CtrlOne.exe')
+        },
+        @{
+            Name = '렌더링 파일 확인'
+            Target = $bridgeExe
+            Args = '/files/'
+            WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
+            Icon = $(
+                $fc = Join-Path $InstallDir 'FileChecker-Windows-x64\FileCheckerFinder.exe'
+                if (Test-Path $fc) { $fc } else { $bridgeExe }
+            )
+        },
+        @{
+            Name = '방송실 일정'
+            Target = $bridgeExe
+            Args = '/schedule/'
+            WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
+            Icon = $(
+                $sdm = Join-Path $InstallDir 'BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe'
+                if (Test-Path $sdm) { $sdm } else { $bridgeExe }
+            )
+        },
+        @{
+            Name = '방송실 작업일지'
+            Target = $bridgeExe
+            Args = '/worklog/'
+            WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
+            Icon = $(
+                $wl = Join-Path $InstallDir 'WorkLog-Windows-x64\WorkLog.exe'
+                if (Test-Path $wl) { $wl } else { $bridgeExe }
+            )
+        },
+        @{
+            Name = '스케쥴 생성 유틸'
+            Target = (Join-Path $InstallDir 'ScheduleReader-portable\Setup-And-Run.bat')
+            Args = ''
+            WorkDir = (Join-Path $InstallDir 'ScheduleReader-portable')
+            Icon = $(
+                $ico = Join-Path $InstallDir 'ScheduleReader-portable\app.ico'
+                if (Test-Path $ico) { $ico } else { (Join-Path $InstallDir 'ScheduleReader-portable\Setup-And-Run.bat') }
+            )
+        }
     )
 
     foreach ($t in $targets) {
-        $exePath = Join-Path $InstallDir $t.Rel
-        if (-not (Test-Path $exePath)) {
-            Write-Host "  건너뜀 (없음): $($t.Rel)" -ForegroundColor Yellow
+        if (-not $t.Target -or -not (Test-Path $t.Target)) {
+            Write-Host "  건너뜀 (없음): $($t.Name)" -ForegroundColor Yellow
             continue
         }
-        $lnkPath = Join-Path $desktop ("BroadcastingApp - $($t.Name).lnk")
+        $lnkPath = Join-Path $shortcutDir ("$($t.Name).lnk")
         $sc = $wsh.CreateShortcut($lnkPath)
-        $sc.TargetPath = $exePath
-        $sc.WorkingDirectory = Split-Path $exePath -Parent
-        $sc.Description = "BroadcastingApp - $($t.Name)"
+        $sc.TargetPath = $t.Target
+        $sc.Arguments = $t.Args
+        $sc.WorkingDirectory = $t.WorkDir
+        $sc.Description = $t.Name
+        if ($t.Icon -and (Test-Path $t.Icon)) {
+            $sc.IconLocation = "$($t.Icon),0"
+        }
         $sc.Save()
         Write-Host "  바로가기: $lnkPath"
     }
@@ -87,7 +185,8 @@ else {
 }
 
 Write-Host ""
-Write-Host "설치가 끝났습니다. 각 앱 폴더의 실행 파일을 사용하세요." -ForegroundColor Green
+Write-Host "설치가 끝났습니다." -ForegroundColor Green
 Write-Host "  $InstallDir"
+Write-Host "스케줄·일지·파일체크는 「방송실 프로그램 시작」 또는 각 바로가기(브리지)로 실행하세요."
 Write-Host ""
 Read-Host "Enter 키를 누르면 종료"

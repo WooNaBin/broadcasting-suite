@@ -24,11 +24,23 @@ sync_worklog() {
   mkdir -p "$dest"
   [[ -d "$src" ]] || return 0
   cp -f "$src/index.html" "$src/styles.css" "$src/templates.js" "$dest/" 2>/dev/null || true
+  if [[ -f "$dest/index.html" ]]; then
+    sed -i.bak \
+      -e 's|href="/styles.css"|href="/worklog/styles.css"|' \
+      -e 's|href="styles.css"|href="/worklog/styles.css"|' \
+      -e 's|src="/app.js"|src="/worklog/app.js"|' \
+      -e 's|src="app.js"|src="/worklog/app.js"|' \
+      "$dest/index.html" && rm -f "$dest/index.html.bak"
+  fi
   if [[ -f "$src/app.js" ]]; then
     sed -e 's|let apiBase = "http://127.0.0.1:17822";|let apiBase = "/worklog";|' \
         -e "s|let apiBase = 'http://127.0.0.1:17822';|let apiBase = '/worklog';|" \
         -e 's|return "http://127.0.0.1:17822";|return "/worklog";|' \
         -e "s|return 'http://127.0.0.1:17822';|return '/worklog';|" \
+        -e 's|from "/templates.js"|from "/worklog/templates.js"|' \
+        -e "s|from '/templates.js'|from '/worklog/templates.js'|" \
+        -e 's|from "./templates.js"|from "/worklog/templates.js"|' \
+        -e "s|from './templates.js'|from '/worklog/templates.js'|" \
         "$src/app.js" > "$dest/app.js"
   fi
 }

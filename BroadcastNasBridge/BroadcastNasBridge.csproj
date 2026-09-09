@@ -9,6 +9,7 @@
     <Product>Broadcast NAS Bridge</Product>
     <AssemblyTitle>Broadcast NAS Bridge</AssemblyTitle>
     <Description>Unified NAS bridge for Schedule · WorkLog · FileChecker</Description>
+    <ApplicationIcon Condition="Exists('$(MSBuildProjectDirectory)\assets\app.ico')">assets\app.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="$(RuntimeIdentifier) != '' AND $(RuntimeIdentifier.StartsWith('win'))">
     <OutputType>WinExe</OutputType>

@@ -105,6 +105,161 @@ public sealed class WorkLogFileStore
             return File.ReadAllText(path, Encoding.UTF8);
     }
 
+    private const int EditLockTtlSeconds = 45;
+
+    public EditLockState? GetEditLock(string date)
+    {
+        EnsureConnected();
+        ValidateDate(date);
+        lock (_fileGate)
+        {
+            var path = EditLockPath(date);
+            var current = ReadEditLockFile(path);
+            if (current is null) return null;
+            if (!IsEditLockAlive(current))
+            {
+                TryDeleteEditLock(path);
+                return null;
+            }
+            return current;
+        }
+    }
+
+    public (bool Ok, EditLockState? Lock, EditLockState? Conflict) AcquireEditLock(EditLockRequest request)
+    {
+        EnsureConnected();
+        var date = RequireDate(request.Date);
+        var sessionId = RequireToken(request.SessionId, "sessionId");
+        var actorId = RequireToken(request.ActorId, "actorId");
+        var actorName = string.IsNullOrWhiteSpace(request.ActorName) ? actorId : request.ActorName.Trim();
+        Directory.CreateDirectory(Path.Combine(_root!, "locks"));
+
+        lock (_fileGate)
+        {
+            var path = EditLockPath(date);
+            var existing = ReadEditLockFile(path);
+            if (existing is not null && IsEditLockAlive(existing) &&
+                !string.Equals(existing.SessionId, sessionId, StringComparison.Ordinal))
+                return (false, null, existing);
+
+            var now = DateTimeOffset.UtcNow;
+            var next = new EditLockState(
+                date,
+                sessionId,
+                actorId,
+                actorName,
+                existing is not null && string.Equals(existing.SessionId, sessionId, StringComparison.Ordinal)
+                    ? existing.AcquiredAt
+                    : now.ToString("O"),
+                now.ToString("O"));
+            WriteEditLockFile(path, next);
+            var confirm = ReadEditLockFile(path);
+            if (confirm is null || !string.Equals(confirm.SessionId, sessionId, StringComparison.Ordinal))
+                return (false, null, confirm);
+            return (true, confirm, null);
+        }
+    }
+
+    public (bool Ok, EditLockState? Lock, EditLockState? Conflict) HeartbeatEditLock(EditLockRequest request)
+    {
+        EnsureConnected();
+        var date = RequireDate(request.Date);
+        var sessionId = RequireToken(request.SessionId, "sessionId");
+        lock (_fileGate)
+        {
+            var path = EditLockPath(date);
+            var existing = ReadEditLockFile(path);
+            if (existing is null || !IsEditLockAlive(existing) ||
+                !string.Equals(existing.SessionId, sessionId, StringComparison.Ordinal))
+                return (false, null, existing is not null && IsEditLockAlive(existing) ? existing : null);
+
+            var next = existing with { HeartbeatAt = DateTimeOffset.UtcNow.ToString("O") };
+            WriteEditLockFile(path, next);
+            return (true, next, null);
+        }
+    }
+
+    public void ReleaseEditLock(EditLockRequest request)
+    {
+        EnsureConnected();
+        var date = RequireDate(request.Date);
+        var sessionId = RequireToken(request.SessionId, "sessionId");
+        lock (_fileGate)
+        {
+            var path = EditLockPath(date);
+            var existing = ReadEditLockFile(path);
+            if (existing is null) return;
+            if (!string.Equals(existing.SessionId, sessionId, StringComparison.Ordinal)) return;
+            TryDeleteEditLock(path);
+        }
+    }
+
+    private string EditLockPath(string date) => ResolvePath($"locks/{date}.json");
+
+    private static bool IsEditLockAlive(EditLockState state)
+    {
+        if (!DateTimeOffset.TryParse(state.HeartbeatAt, out var heartbeat)) return false;
+        return (DateTimeOffset.UtcNow - heartbeat).TotalSeconds < EditLockTtlSeconds;
+    }
+
+    private EditLockState? ReadEditLockFile(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var json = File.ReadAllText(path, Encoding.UTF8);
+            return JsonSerializer.Deserialize<EditLockState>(json, EditLockJsonOptions());
+        }
+        catch { return null; }
+    }
+
+    private static void WriteEditLockFile(string path, EditLockState state)
+    {
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        var json = JsonSerializer.Serialize(state, EditLockJsonOptions());
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, json, Encoding.UTF8);
+        File.Move(tmp, path, overwrite: true);
+    }
+
+    private static void TryDeleteEditLock(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+            var tmp = path + ".tmp";
+            if (File.Exists(tmp)) File.Delete(tmp);
+        }
+        catch { /* ignore */ }
+    }
+
+    private static string RequireDate(string? date)
+    {
+        ValidateDate(date ?? "");
+        return date!.Trim();
+    }
+
+    private static string RequireToken(string? value, string name)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException($"{name}이(가) 필요합니다.");
+        return value.Trim();
+    }
+
+    private static void ValidateDate(string date)
+    {
+        if (string.IsNullOrWhiteSpace(date) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(date, @"^\d{4}-\d{2}-\d{2}$"))
+            throw new ArgumentException("date는 YYYY-MM-DD 형식이어야 합니다.");
+    }
+
+    private static JsonSerializerOptions EditLockJsonOptions() => new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
     public string[] ListScheduleJsonFiles()
     {
         EnsureConnected();
@@ -174,3 +329,13 @@ public sealed class WorkLogFileStore
         public string? Content { get; init; }
     }
 }
+
+public sealed record EditLockRequest(string? Date, string? SessionId, string? ActorId, string? ActorName);
+
+public sealed record EditLockState(
+    string Date,
+    string SessionId,
+    string ActorId,
+    string ActorName,
+    string AcquiredAt,
+    string HeartbeatAt);

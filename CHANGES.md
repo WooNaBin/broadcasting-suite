@@ -36,6 +36,320 @@
 
 ## 기록
 
+## 2026-09-09 — 스위트 배포 `1.1.0.9_20260909`
+
+- **스위트:** `1.1.0.9_20260909`
+- **대상:** BroadcastNasBridge / CtrlOne / FileChecker / ScheduleDataManager / ScheduleReader / WorkLog / 빌드스크립트 / 문서
+- **유형:** 배포
+
+### 내용
+- 일괄 빌드·번들 zip: `Builded\BroadcastingApp_1.1.0.9_20260909.zip`
+- 포함: SR 엑셀 추출 전환, SDM 강사목록·일요일 칸, WorkLog 인쇄됨·테마 등 당일 변경
+
+### 확인
+- [x] `Build-BroadcastApps.bat` 빌드
+
+## 2026-09-09 — ScheduleReader 엑셀 추출로 전환
+
+- **스위트:** `1.1.0.9_20260909`
+- **대상:** ScheduleReader / 빌드스크립트
+- **유형:** 기능 | 기타
+
+### 내용
+- 이미지 OCR·격자 UI·관련 소스 제거
+- 브라우저: 일정 엑셀 불러오기 → 추출 → JSON 내보내기
+- openpyxl 헤더 표(`날짜`/`제목`/…) 추출 → SDM `schedule-data.json`
+- 배포 패키지에서 OCR `models/` 복사 중단
+
+### 확인
+- [x] 로컬 스모크(표 샘플 추출)
+- [ ] 실제 월간 일정 엑셀로 추출·SDM import
+- [x] `Build-BroadcastApps.bat` 빌드
+
+## 2026-09-09 — SDM 강사 목록(광주/외부) · 설정
+
+- **스위트:** `1.1.0.9_20260909`
+- **대상:** ScheduleDataManager
+- **유형:** 기능
+
+### 내용
+- 강사명 입력란을 좁히고 PA 옆에 **광주·외부** 버튼 추가(목록에서 선택 시 이름 입력)
+- 「일정 선택(내보내기)」 옆 톱니 설정 → **강사 목록** 탭에서 광주/외부 각각 저장(localStorage)
+
+### 확인
+- [ ] 로컬 실행
+- [ ] NAS 동시 접속 (해당 시)
+- [ ] `Build-BroadcastApps.bat` 빌드
+
+## 2026-09-09 — SDM 달력 일요일 칸 가로 확대
+
+- **스위트:** `1.1.0.9_20260909`
+- **대상:** ScheduleDataManager
+- **유형:** 수정
+
+### 내용
+- 달력 보기에서 일요일 열(헤더·셀)만 가로 약 1.2배
+
+### 확인
+- [ ] 로컬 실행
+- [ ] NAS 동시 접속 (해당 시)
+- [ ] `Build-BroadcastApps.bat` 빌드
+
+## 2026-09-09 — WorkLog 인쇄됨 저장 · 오늘 버튼 · 테마 톤 맞춤
+
+- **스위트:** `1.1.0.9_20260909`
+- **대상:** WorkLog / BroadcastNasBridge(worklog UI 동기화)
+- **유형:** 기능 | 수정
+
+### 내용
+- 인쇄 성공(`afterprint`) 후 해당일·동반일 `isPrinted=true` 저장
+- 「오늘」 버튼을 날짜 라벨과 같은 줄 오른쪽으로 이동
+- 다크 초록 톤을 SDM과 같은 밝은 배경·오렌지 액센트로 맞춤
+
+### 확인
+- [ ] 로컬 실행
+- [ ] NAS 동시 접속 (해당 시)
+- [ ] `Build-BroadcastApps.bat` 빌드
+
+## 2026-09-09 — SDM 색상 직접선택 · 다수추가 기간·스와치
+
+- **스위트:** `1.1.0.9_20260909`
+- **대상:** ScheduleDataManager
+- **유형:** 기능 | 수정
+
+### 내용
+- 일정 추가 색상에 **직접** 색상 선택(`type=color`, hex 저장)
+- 다수 추가: **시작일·종료일**(기간이면 날짜별 생성) · 색상 **스와치**
+- 기본 **2행** ·「1행 추가」만 유지(5행 추가 제거)
+
+### 확인
+- [ ] 단일/다수에서 색상 스와치·직접 선택
+- [ ] 다수 추가 기간 행 → 여러 날짜 생성
+
+---
+
+## 2026-09-09 — SDM 다수 추가(직접 작성) UX 보강
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager / BroadcastNasBridge
+- **유형:** 수정
+
+### 내용
+- 다수 추가 = **표에 여러 일정을 직접 입력** (JSON 다중 선택 아님) 안내 명시
+- 열 순서: 날짜 → **제목** → 시간 → 장소 → 강사 → 색상 → 준비
+- 제목 Enter → 다음 행 · 하단 일괄 저장 고정 · SW `v18`
+
+### 확인
+- [ ] 일정 추가 → 다수 추가 → 여러 행 작성 → 일괄 저장
+
+---
+
+## 2026-09-09 — SDM intro 레이아웃 복구 (월 일정 버튼)
+
+- **스위트:** `—` (재배포 또는 `sync-ui` 후 브리지 재시작)
+- **대상:** ScheduleDataManager / BroadcastNasBridge
+- **유형:** 수정
+
+### 내용
+- 광주교회 n월 일정 버튼 추가로 intro 우측 칸이 좁아져 공유사항 줄·버튼이 찌그러진 문제 수정
+- 제목/공유사항 줄을 intro 전체 폭으로 배치 · 월 일정 버튼 폭 약간 확대
+
+### 확인
+- [x] `sync-ui.ps1`
+- [ ] `/schedule`에서 광주교회 n월 일정 · 오늘 일정 · 공유사항 한 줄로 보이는지
+
+---
+
+## 2026-09-09 — WorkLog 날짜별 작성 잠금 `#115`
+
+- **스위트:** `—` (재배포 시 브리지 `sync-ui`로 `/worklog` 반영)
+- **대상:** WorkLog / BroadcastNasBridge
+- **유형:** 기능
+
+### 내용
+- 일지 기본 읽기 전용. **일지 작성/수정**으로만 편집 모드 진입
+- 잠금은 NAS 공유 폴더 `locks/YYYY-MM-DD.json` (로컬 브리지가 각각 읽기/쓰기). heartbeat 15초 · TTL 45초
+- 다른 단말: 「{이름}님이 작성 중입니다」· 버튼 시 작성 불가 안내
+- 저장·작성 취소·날짜 이동·페이지 종료(`pagehide`/`beforeunload`/sendBeacon) 시 잠금 해제. 비정상 종료는 TTL로 회수
+
+### 확인
+- [x] LocalBridge / MacBridge / nas-api / BroadcastNasBridge 빌드
+- [x] `sync-ui.ps1`
+- [ ] 두 PC에서 같은 날짜 작성 잠금·저장 후 해제
+- [ ] 작성 중 탭 종료 후 약 1분 내 다른 PC 진입
+
+---
+
+## 2026-09-09 — SDM 공문 업로드 파일명 YYYYMMDD 보정
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager / BroadcastNasBridge
+- **유형:** 수정
+
+### 내용
+- 공문 업로드 시 원본 파일명 유지. 8자리 날짜(`YYYYMMDD`)로 시작하지 않으면 일정 날짜를 앞에 붙여 저장
+- 예: `행사.jpg` + 일정 `2026-09-09` → `20260909_행사.jpg`
+- 동일 이름 충돌 시 `_01` 등으로 유일화 · 업로드 토스트에 저장 파일명 표시
+
+### 확인
+- [ ] 날짜 없는 파일 업로드 → `YYYYMMDD_` 접두 확인
+- [ ] 이미 `20260909_…`인 파일은 접두 중복 없이 유지
+
+---
+
+## 2026-09-09 — SDM 공문 연결 목록 필터
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager
+- **유형:** 수정
+
+### 내용
+- 공문 연결 드롭다운: `YYYYMMDD`(8자리)로 시작하는 파일만 표시
+- 일정 날짜 기준 앞뒤 2개월 밖·날짜 없는 파일은 목록에서 제외 (월 일정 `yyyymm_광주교회일정_*` 등 제외)
+
+### 확인
+- [ ] 일정 날짜 근처 8자리 공문만 드롭다운에 보이는지
+- [ ] `202609_광주교회일정_01` 등 6자리·월 일정 이미지는 연결 목록에 안 나오는지
+
+---
+
+## 2026-09-09 — SDM 월 일정 이미지 · 다수 추가 `#114`
+
+- **스위트:** `—` (재배포 시 브리지 `sync-ui`로 `/schedule` 반영)
+- **대상:** ScheduleDataManager / BroadcastNasBridge
+- **유형:** 기능
+
+### 내용
+- 오늘 일정 왼쪽에 **광주교회 {m}월 일정** 버튼(캘린더 월 기준). 공문 폴더 `_official_documents`에서 `yyyymm_광주교회일정_nn` jpg/png 열어 보기. 없으면 토스트 안내
+- 일정 추가 **다수 추가** 탭 표기·레이아웃 보강(넓은 표·날짜 고정·날짜 채우기·기본/추가 5행)
+
+### 확인
+- [x] `sync-ui.ps1`
+- [ ] NAS에 `202609_광주교회일정_01.jpg` 등 두고 해당 월에서 열기
+- [ ] 다수 추가 → 여러 행 일괄 저장
+
+---
+
+## 2026-09-09 — WorkLog 로그 IP·오늘·제목규칙 우선순위 `#113`
+
+- **스위트:** `—` (재배포 시 브리지 `sync-ui`로 `/worklog` 반영)
+- **대상:** WorkLog / BroadcastNasBridge
+- **유형:** 기능
+
+### 내용
+- 감사(로그) 기록에 요청 IP 포함(로컬이면 PC LAN IP) · 로그 모달에 `IP …` 표시
+- 선택 날짜 오른쪽에 **오늘** 버튼(해당 월로 이동·선택)
+- 일지 입력란 아래, 선택일이 오늘이 아니면 「오늘 날짜가 아닌 일지입니다」 안내
+- 기본 일정 기록 시 제목 규칙은 위부터 첫 일치만 적용 · 설정 UI에 ↑↓ 우선순위
+
+### 확인
+- [x] `dotnet build -c Release` WorkLog LocalBridge / nas-api / BroadcastNasBridge
+- [x] `sync-ui.ps1`
+- [ ] 기록 규칙: `대집회`가 `집회`보다 위일 때 「3월대집회」→ 대집회만
+- [ ] 로그 저장 후 IP 표시
+
+---
+
+## 2026-09-09 — TODO `#110` `#111` `#112`
+
+- **스위트:** `—` (재배포 권장)
+- **대상:** BroadcastNasBridge / FileChecker / ScheduleDataManager / 빌드스크립트
+- **유형:** 수정 | 기능
+
+### 내용
+- `#110` FC·브리지 JSON 선택을 SDM과 동일 규칙으로 맞춤 + SDM 연결 파일을 `ScheduleJsonFile`로 저장
+- `#111` `Build-BroadcastApps.ps1`/`.sh` 완료 시 산출 폴더 자동 열기
+- `#112` 공문 보기 원본 비율·페이지(넘버링) · 연결 리스트 그룹 1개 · 일정 ±2개월 필터
+
+### 확인
+- [x] `dotnet build -c Release` BroadcastNasBridge
+- [x] `dotnet build -c Release` FileCheckerFinder
+- [x] `sync-ui.ps1`
+- [ ] NAS 실기: SDM 연결 파일 = FC Recording 목록
+- [ ] 공문 다장 넘김·연결 필터
+
+---
+
+## 2026-09-09 — SDM 일정 복수추가 탭 `#109`
+
+- **스위트:** `—` (재배포 시 브리지 `sync-ui`로 `/schedule` 반영)
+- **대상:** ScheduleDataManager
+- **유형:** 기능
+
+### 내용
+- 일정 추가 다이얼로그 모드에 **복수추가** 탭 추가 (단일 날짜 / 기간 입력 / 복수추가)
+- 표 형식 일괄 입력: 날짜·시간·색상·장소·제목·강사·준비 체크 · 행 추가/삭제 · 일괄 저장
+- 수정 시 복수추가 탭 숨김 · 복수추가 모드에서 다이얼로그 폭 확대
+
+### 확인
+- [ ] SDM에서 복수추가 → 여러 행 저장 후 보드 반영
+- [ ] 브리지 `/schedule` (재시작 또는 `sync-ui`) 동일 UI
+
+---
+
+## 2026-09-09 — WorkLog CSS · FileChecker SDM Recording
+
+- **스위트:** `—` (재배포 권장)
+- **대상:** BroadcastNasBridge
+- **유형:** 수정
+
+### 내용
+- WorkLog: `/worklog/styles.css`·`/worklog/app.js`·`/worklog/templates.js` 절대 경로 + `/worklog`→`/worklog/` 리다이렉트 (상대경로 CSS 미적용 수정)
+- FileChecker: 자체 `schedules.json` 대신 **SDM 공유 JSON**의 `preparation`∋Recording 만 작업 목록으로 자동 로드
+- 브리지 UI: 수동 스케줄 등록/가져오기 안내 변경, SDM 동기화 버튼
+
+### 확인
+- [x] `dotnet build -c Release`
+- [ ] 브리지 `/worklog/` 스타일
+- [ ] NAS 연결 후 `/files/` Recording 목록
+
+---
+
+## 2026-09-09 — 빌드 피드백 `#100`–`#108`
+
+- **스위트:** `—` (재배포 권장)
+- **대상:** BroadcastNasBridge / Install / SDM / WorkLog / 빌드스크립트
+- **유형:** 수정 | 기능
+
+### 내용
+- `#100` 아이콘: `assets/icons` → 각 앱 assets · Bridge ApplicationIcon
+- `#101` `#102` 바로가기 한글명 + 바탕화면「방송실 프로그램」폴더
+- `#105` 일정·일지·파일체크 바로가기가 Bridge exe + `/schedule|/worklog|/files` (레거시 exe 아님)
+- `#103` 시작 페이지: NAS 연결됨 / 설정 / 스케줄 / 일지 / 파일체크만
+- `#104` NAS IP 직접입력 + 네트워크 검색(`/api/lan-devices`)
+- `#106` 브리지 연결 시 스케줄 로그인 스킵
+- `#107` WorkLog CSS·JS 상대경로 (`styles.css` / `./templates.js`)
+- `#108` FileChecker Recording 동기화 — SDM 배열·`scheduleDate`/`scheduleTitle` 매핑
+
+### 확인
+- [x] `dotnet build -c Release` BroadcastNasBridge
+- [ ] `Build-BroadcastApps.bat` 재배포 후 설치·바로가기 확인
+- [ ] NAS 실기: 시작 페이지·검색·스케줄/일지/파일체크
+
+---
+
+## 2026-09-09 — 빌드 산출 경로 설정 `#1`
+
+- **스위트:** `—`
+- **대상:** 빌드스크립트 / 문서
+- **유형:** 기능
+
+### 내용
+- `broadcast-suite.build.json`에 산출 폴더·대상 OS를 기록 (예시: `broadcast-suite.build.example.json`)
+- `Configure-BroadcastBuild.bat` / `Build-BroadcastApps.bat config` 로 폴더 선택
+- Windows·Mac 스크립트가 같은 JSON을 읽고, `-Target Host|Windows|Mac|All` 로 OS별 게시
+- Windows 일괄 빌드에 `BroadcastNasBridge` 포함, `sync-ui.ps1` 추가
+- WorkLog·ScheduleDataManager·FileChecker의 `D:\Projects\Builded` 하드코딩 제거
+- `Build-BroadcastApps.bat`는 ASCII만 사용 (cmd UTF-8 한글 줄 깨짐으로 ExecutionPolicy가 쪼개지던 문제)
+- `Install-BroadcastApps.ps1` UTF-8 BOM + 콘솔 UTF-8 — Windows 설치 메시지 한글 깨짐 수정
+- 설치 폴더는 빌드 경로와 같이 폴더 선택 창으로 지정 (직접 입력 없음, 취소 시 기본 위치)
+
+### 확인
+- [x] `Build-BroadcastApps.ps1 -ShowConfig` 경로 해석
+- [ ] 전체 `Build-BroadcastApps.bat` 재배포 (요청 시)
+
+---
+
 ## 2026-09-08 — NAS 통합 브리지 `#90` 구현
 
 - **스위트:** `—` (브리지 포함 재배포는 별도)

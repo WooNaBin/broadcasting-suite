@@ -3,19 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NAS 설정 · BroadcastNasBridge</title>
+  <title>NAS 설정 · 방송실</title>
   <link rel="stylesheet" href="/css/hub.css" />
 </head>
 <body>
   <main class="shell narrow">
-    <header class="hero">
-      <p class="eyebrow">경로 마법사</p>
-      <h1>NAS 연결</h1>
-      <p class="lede">기존 앱 기본 경로를 프리필합니다. Temp·Permanent 공유를 각각 마운트합니다.</p>
+    <header class="hero compact">
+      <h1>NAS 설정</h1>
     </header>
 
     <form id="setup-form" class="form">
-      <label>NAS IP <input name="host" required placeholder="192.168.x.x" autocomplete="off" /></label>
+      <div class="mode-row">
+        <label><input type="radio" name="hostMode" value="manual" checked /> 직접 입력</label>
+        <label><input type="radio" name="hostMode" value="scan" /> 네트워크 검색</label>
+      </div>
+
+      <div class="host-row">
+        <div>
+          <label for="host">NAS IP</label>
+          <input id="host" name="host" required placeholder="192.168.x.x" autocomplete="off" />
+        </div>
+        <button type="button" id="btn-scan" class="ghost">검색</button>
+      </div>
+      <ul id="device-list" class="device-list" hidden></ul>
+
       <label>계정 <input name="username" required autocomplete="username" /></label>
       <label>비밀번호 <input name="password" type="password" autocomplete="current-password" /></label>
       <label class="check"><input name="rememberPassword" type="checkbox" checked /> 비밀번호 기억 (로컬 nas.json)</label>

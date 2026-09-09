@@ -3,38 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>방송실 NAS 브리지</title>
+  <title>방송실 프로그램</title>
   <link rel="stylesheet" href="/css/hub.css" />
 </head>
 <body>
   <main class="shell">
-    <header class="hero">
-      <p class="eyebrow">BroadcastNasBridge · 17820</p>
-      <h1>방송실 시작</h1>
-      <p class="lede">NAS 계정을 한 번 연결하면 스케줄·작업일지·파일체크를 같은 세션에서 엽니다.</p>
+    <header class="hero compact">
+      <h1>방송실 프로그램</h1>
       <div class="status-row">
         <span id="badge" class="badge">확인 중…</span>
         <button type="button" id="btn-setup" class="ghost">NAS 설정</button>
       </div>
-      <p id="status-detail" class="muted"></p>
+      <div id="nas-info" class="nas-info" hidden></div>
     </header>
 
     <section class="apps" aria-label="앱">
-      <a class="app-card" data-app="/schedule/" href="/schedule/">
-        <strong>스케줄</strong>
-        <span>Broadcasting Schedule</span>
-      </a>
-      <a class="app-card" data-app="/worklog/" href="/worklog/">
-        <strong>작업일지</strong>
-        <span>WorkLog</span>
-      </a>
-      <a class="app-card" data-app="/files/" href="/files/">
-        <strong>파일체크</strong>
-        <span>FileChecker</span>
-      </a>
+      <a class="app-card" data-app="/schedule/" href="/schedule/"><strong>스케줄</strong></a>
+      <a class="app-card" data-app="/worklog/" href="/worklog/"><strong>작업일지</strong></a>
+      <a class="app-card" data-app="/files/" href="/files/"><strong>파일체크</strong></a>
     </section>
-
-    <p class="footnote muted">CtrlOne · ScheduleReader는 별도 실행입니다. 이 창과 앱 탭을 모두 닫으면 약 5초 후 브리지가 종료됩니다.</p>
   </main>
   <script src="/js/session.js"></script>
   <script src="/js/hub.js"></script>
