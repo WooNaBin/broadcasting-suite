@@ -60,6 +60,8 @@ if (Test-Path $worklogSrc) {
         $txt = [System.IO.File]::ReadAllText($appJs)
         $txt = $txt.Replace('let apiBase = "http://127.0.0.1:17822";', 'let apiBase = "/worklog";')
         $txt = $txt.Replace("let apiBase = 'http://127.0.0.1:17822';", "let apiBase = '/worklog';")
+        $txt = $txt.Replace('return isBridgeHosted() ? "/worklog" : "http://127.0.0.1:17822";', 'return "/worklog";')
+        $txt = $txt.Replace("return isBridgeHosted() ? '/worklog' : 'http://127.0.0.1:17822';", "return '/worklog';")
         $txt = $txt.Replace('return "http://127.0.0.1:17822";', 'return "/worklog";')
         $txt = $txt.Replace("return 'http://127.0.0.1:17822';", "return '/worklog';")
         $txt = $txt.Replace('from "/templates.js"', 'from "/worklog/templates.js"')

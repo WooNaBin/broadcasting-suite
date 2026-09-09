@@ -35,6 +35,8 @@ sync_worklog() {
   if [[ -f "$src/app.js" ]]; then
     sed -e 's|let apiBase = "http://127.0.0.1:17822";|let apiBase = "/worklog";|' \
         -e "s|let apiBase = 'http://127.0.0.1:17822';|let apiBase = '/worklog';|" \
+        -e 's|return isBridgeHosted() ? "/worklog" : "http://127.0.0.1:17822";|return "/worklog";|' \
+        -e "s|return isBridgeHosted() ? '/worklog' : 'http://127.0.0.1:17822';|return '/worklog';|" \
         -e 's|return "http://127.0.0.1:17822";|return "/worklog";|' \
         -e "s|return 'http://127.0.0.1:17822';|return '/worklog';|" \
         -e 's|from "/templates.js"|from "/worklog/templates.js"|' \

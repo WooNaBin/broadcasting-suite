@@ -321,7 +321,15 @@ public static class AppRouteMapper
         var g = app.MapGroup("/worklog/api");
         g.MapGet("/status", (NasService nas) =>
         {
-            BindWorkLog(store, nas);
+            try
+            {
+                if (nas.IsConnected)
+                    BindWorkLog(store, nas);
+            }
+            catch
+            {
+                /* status only — 바인딩 실패해도 응답은 반환 */
+            }
             return Results.Ok(new
             {
                 app = "WorkLog",
@@ -330,6 +338,7 @@ public static class AppRouteMapper
                 root = store.Root,
                 scheduleRoot = store.ScheduleRoot,
                 via = "BroadcastNasBridge",
+                nasConnected = nas.IsConnected,
             });
         });
         g.MapPost("/session/ping", (UiSessionGuard s) => { s.Ping(); return Results.Ok(new { ok = true }); });
@@ -347,6 +356,8 @@ public static class AppRouteMapper
                     nas.Connect(cfg);
                 }
                 BindWorkLog(store, nas);
+                if (!store.IsConnected)
+                    return Results.BadRequest(new { message = "작업일지 경로를 열 수 없습니다. 브리지 NAS 설정을 확인하세요." });
                 return Results.Ok(new { connected = true, root = store.Root, scheduleRoot = store.ScheduleRoot });
             }
             catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
@@ -576,6 +587,8 @@ public static class AppRouteMapper
     {
         if (!nas.IsConnected) return;
         var wl = nas.WorkLogRoot ?? throw new InvalidOperationException("작업일지 루트 없음");
+        if (!Directory.Exists(wl))
+            Directory.CreateDirectory(wl);
         store.Bind(wl, nas.ScheduleRoot);
     }
 
@@ -759,6 +772,15 @@ async function tryEnterFromBridgeOrLogin() {
             text = text.Replace(
                 "let apiBase = 'http://127.0.0.1:17822';",
                 "let apiBase = '/worklog';",
+                StringComparison.Ordinal);
+            // defaultApiBase() 가 pathname으로 판별해도, 복사본은 /worklog 고정이 안전
+            text = text.Replace(
+                "return isBridgeHosted() ? \"/worklog\" : \"http://127.0.0.1:17822\";",
+                "return \"/worklog\";",
+                StringComparison.Ordinal);
+            text = text.Replace(
+                "return isBridgeHosted() ? '/worklog' : 'http://127.0.0.1:17822';",
+                "return '/worklog';",
                 StringComparison.Ordinal);
             text = text.Replace(
                 "return \"http://127.0.0.1:17822\";",

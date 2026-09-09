@@ -36,6 +36,24 @@
 
 ## 기록
 
+## 2026-09-09 — WL 브리지 진입 시 NAS 로그인 화면·연결 무반응 수정
+
+- **스위트:** `—` (브리지·WorkLog UI 핫픽스, 재배포 전)
+- **대상:** WorkLog / BroadcastNasBridge
+- **유형:** 수정
+- **TODO:** `#123`
+
+### 내용
+- WorkLog: `/worklog` 호스팅 시 `apiBase`를 단독 `17822`로 되돌리지 않음 → 연결 버튼 복구
+- 브리지 NAS가 이미 연결됐으면 설정/로그인 화면 건너뛰고 프로필·일지로 진입
+- 브리지 `/worklog/api/status` 바인딩 예외 흡수 · 미바인드 시 빈 `connect`로 store 연결
+- `sync-ui`로 `wwwroot/worklog` 반영 · Bridge Release 빌드 확인
+
+### 확인
+- [x] `dotnet build` BroadcastNasBridge
+- [x] `sync-ui.ps1`
+- [ ] 브리지 재시작 후 `/worklog` 실기
+
 ## 2026-09-09 — 스위트 `1.1.0.12_20260909` 배포
 
 - **스위트:** `1.1.0.12_20260909`
