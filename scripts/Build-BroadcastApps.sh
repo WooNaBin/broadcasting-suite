@@ -202,9 +202,36 @@ package_osx_folder() {
       echo "error: $bin 없음 ($rid)" >&2
       return 1
     fi
+    write_mac_command_launcher "$portable" "$bin" "Launch-${bin}.command"
     rm -rf "$stage"
+    zip_dir "$portable" "$dest/${prefix}-macOS-$label-$STAMP.zip"
     echo "  Mac $label: $portable"
   done
+}
+
+# Finder .command → Terminal 창 없이 앱만 남기기
+write_mac_command_launcher() {
+  local dir="$1" bin="$2" file="${3:-Launch.command}"
+  cat > "$dir/$file" <<EOF
+#!/bin/bash
+cd "\$(dirname "\$0")" || exit 1
+BIN="./$bin"
+chmod +x "\$BIN" 2>/dev/null || true
+if ! pgrep -xq "$bin" >/dev/null 2>&1; then
+  nohup "\$BIN" >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+fi
+osascript >/dev/null 2>&1 <<'OSA' &
+delay 0.2
+tell application "Terminal"
+  try
+    close front window saving no
+  end try
+end tell
+OSA
+exit 0
+EOF
+  chmod +x "$dir/$file" "$dir/$bin" 2>/dev/null || true
 }
 
 # --- CtrlOne ---
@@ -318,22 +345,23 @@ fi
 echo "== ScheduleReader =="
 SR_DEST="$OUT/ScheduleReader"
 SR_CSPROJ="$ROOT/ScheduleReader/ScheduleReader.csproj"
+SR_PORTABLE="$SR_DEST/ScheduleReader-Windows-x64"
 mkdir -p "$SR_DEST"
 if [[ ! -f "$SR_CSPROJ" ]]; then
   echo "  ScheduleReader.csproj 없음 — 건너뜀" >&2
 elif [[ "$WANT_WIN" -eq 1 ]]; then
   SR_STAGE="$SR_DEST/_stage"
-  rm -rf "$SR_STAGE" "$SR_DEST/ScheduleReader-Windows-x64"
-  mkdir -p "$SR_STAGE" "$SR_DEST/ScheduleReader-Windows-x64"
+  rm -rf "$SR_STAGE" "$SR_PORTABLE"
+  mkdir -p "$SR_STAGE" "$SR_PORTABLE"
   publish_win "$SR_CSPROJ" "$SR_STAGE"
   cp "$SR_STAGE/ScheduleReader.exe" "$SR_DEST/ScheduleReader.exe"
-  cp "$SR_STAGE/ScheduleReader.exe" "$SR_DEST/ScheduleReader-Windows-x64/ScheduleReader.exe"
+  cp "$SR_STAGE/ScheduleReader.exe" "$SR_PORTABLE/ScheduleReader.exe"
   printf '%s\n' '@echo off' 'chcp 65001 >nul' 'cd /d "%~dp0"' 'start "" "%~dp0ScheduleReader.exe"' \
-    > "$SR_DEST/ScheduleReader-Windows-x64/serve.bat"
+    > "$SR_PORTABLE/serve.bat"
   printf '%s\n' 'ScheduleReader — ScheduleReader.exe 실행 → http://127.0.0.1:17823 (Python 불필요)' \
-    > "$SR_DEST/ScheduleReader-Windows-x64/README-DEPLOY.txt"
+    > "$SR_PORTABLE/README-DEPLOY.txt"
   rm -rf "$SR_STAGE"
-  zip_dir "$SR_DEST/ScheduleReader-Windows-x64" "$SR_DEST/ScheduleReader-Windows-x64-$STAMP.zip"
+  zip_dir "$SR_PORTABLE" "$SR_DEST/ScheduleReader-Windows-x64-$STAMP.zip"
 fi
 if [[ "$WANT_MAC" -eq 1 && -f "$SR_CSPROJ" ]]; then
   echo "== ScheduleReader macOS =="
@@ -395,13 +423,15 @@ copy_mac arm64 \
   "$CO_DEST/CtrlOne-macOS-arm64" \
   "$OUT/WorkLog/WorkLog-macOS-arm64" \
   "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" \
-  "$FC_DEST/FileChecker-macOS-arm64"
+  "$FC_DEST/FileChecker-macOS-arm64" \
+  "$SR_DEST/ScheduleReader-macOS-arm64"
 copy_mac x64 \
   "$BNB_DEST/BroadcastNasBridge-macOS-x64" \
   "$CO_DEST/CtrlOne-macOS-x64" \
   "$OUT/WorkLog/WorkLog-macOS-x64" \
   "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" \
-  "$FC_DEST/FileChecker-macOS-x64"
+  "$FC_DEST/FileChecker-macOS-x64" \
+  "$SR_DEST/ScheduleReader-macOS-x64"
 if [[ "$INCLUDE_LEGACY" == "1" ]]; then
   [[ -d "$OUT/WorkLog/WorkLog-macOS-arm64.app" ]] && mkdir -p "$BUNDLE_ROOT/Mac/arm64/Legacy" && cp -R "$OUT/WorkLog/WorkLog-macOS-arm64.app" "$BUNDLE_ROOT/Mac/arm64/Legacy/"
   [[ -d "$OUT/WorkLog/WorkLog-macOS-x64.app" ]] && mkdir -p "$BUNDLE_ROOT/Mac/x64/Legacy" && cp -R "$OUT/WorkLog/WorkLog-macOS-x64.app" "$BUNDLE_ROOT/Mac/x64/Legacy/"

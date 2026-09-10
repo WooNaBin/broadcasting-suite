@@ -1,8 +1,8 @@
 {
-    "name":  "BroadcastingApp",
-    "version":  "1.2.0",
-    "build":  20,
-    "description":  "방송실 프로그램 스위트 (CtrlOne, FileChecker, ScheduleDataManager, ScheduleReader, WorkLog)",
-    "lastBuild":  "2026-09-10T17:18:05.8349359+09:00",
-    "lastLabel":  "1.2.0.20_20260910"
+    "name": "BroadcastingApp",
+    "version": "1.2.0",
+    "build": 23,
+    "description": "방송실 프로그램 스위트 (CtrlOne, FileChecker, ScheduleDataManager, ScheduleReader, WorkLog)",
+    "lastBuild": "2026-09-10T19:45:14.687340+09:00",
+    "lastLabel": "1.2.0.23_20260910"
 }

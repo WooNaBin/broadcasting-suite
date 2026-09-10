@@ -420,7 +420,8 @@ function New-SuiteBundleZip {
             (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-arm64'),
             (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64'),
             (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-arm64'),
-            (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-arm64')
+            (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-arm64'),
+            (Join-Path $OutRoot 'ScheduleReader\ScheduleReader-macOS-arm64')
         ); LegacyApps = @(
             (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64.app')
         ) },
@@ -429,7 +430,8 @@ function New-SuiteBundleZip {
             (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-x64'),
             (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64'),
             (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-x64'),
-            (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-x64')
+            (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-x64'),
+            (Join-Path $OutRoot 'ScheduleReader\ScheduleReader-macOS-x64')
         ); LegacyApps = @(
             (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64.app')
         ) }
@@ -632,6 +634,7 @@ function New-MacPortableFolder {
             }
         }
         Remove-Item $stage -Recurse -Force
+        Write-MacCommandLauncher -Dir $portable -BinaryName $BinaryName -FileName ("Launch-{0}.command" -f $BinaryName)
         Write-Host "  Mac $($pair.Label): $portable"
         $created += $portable
     }
@@ -884,12 +887,28 @@ function Sync-BridgeUi {
 
 function Write-MacCommandLauncher([string]$Dir, [string]$BinaryName, [string]$FileName = 'Launch.command') {
     $path = Join-Path $Dir $FileName
+    # Finder .command는 Terminal을 연다. 앱은 분리 실행하고 창을 닫아 쌓임을 막는다.
     $body = @"
 #!/bin/bash
-cd "`$(dirname "`$0")"
-./$BinaryName
+cd "`$(dirname "`$0")" || exit 1
+BIN="./$BinaryName"
+chmod +x "`$BIN" 2>/dev/null || true
+if ! pgrep -xq "$BinaryName" >/dev/null 2>&1; then
+  nohup "`$BIN" >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+fi
+osascript >/dev/null 2>&1 <<'OSA' &
+delay 0.2
+tell application "Terminal"
+  try
+    close front window saving no
+  end try
+end tell
+OSA
+exit 0
 "@
     Write-Utf8NoBom $path $body.Replace("`r`n", "`n")
+    try { & chmod +x $path 2>$null } catch { }
 }
 
 # --- BroadcastNasBridge ---

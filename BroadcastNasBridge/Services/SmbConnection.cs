@@ -706,6 +706,8 @@ public sealed class SmbConnection
             .Where(name => name is not null)
             .Cast<string>()
             .Where(name => !name.StartsWith('_'))
+            .Where(name => !name.Equals("schedule-presets.json", StringComparison.OrdinalIgnoreCase))
+            .Where(name => !name.Equals("speaker-roster.json", StringComparison.OrdinalIgnoreCase))
             .OrderBy(name => name)
             .ToArray();
     }

@@ -36,6 +36,68 @@
 
 ## 기록
 
+## 2026-09-10 — FC 목록 UX · SDM 월별 강사 표시
+
+- **스위트:** `1.2.0.23_20260910` (메타·브리지 기준)
+- **대상:** FileChecker / ScheduleDataManager
+- **유형:** 개선
+
+### 내용
+- FC: 첫 로드 시 오늘만 펼침 · 최상단 헤더 제거 · 새로고침을 작업 목록 왼쪽 · 로딩 안내 · 날짜 오름차순(오래된 위)
+- SDM: 월별보기에서 강사명을 제목 왼쪽 같은 줄에 표시
+
+## 2026-09-10 — SDM 명단 NAS · WL 인쇄양식·제목규칙 A/B
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager / WorkLog / BroadcastNasBridge
+- **유형:** 기능
+
+### 내용
+- SDM 설정 명단 → NAS `_speaker-roster.json` 공유 (localStorage 마이그레이션·충돌 병합)
+- WL: 기록 규칙·직인 등은 기존 `defaults.json`/`print-signs.json` NAS 유지. 로컬만 있던 **업무일지 줄 양식**(`printCardStyle`)을 `print-signs.json`에 저장·사용
+- WL 제목규칙에 기록 위치 A/B 선택(기본 A). 「기본 일정 기록」 시 해당 칸에 반영
+- sync-ui
+
+### 확인
+- [ ] SDM: NAS 연결 후 명단 추가 → 다른 PC 동일
+- [ ] WL: 줄 양식 변경 → 다른 PC 동일 / 제목규칙 B 선택 후 기본 일정 기록
+- Win / Mac: 브리지·단독 동일 API
+
+## 2026-09-10 — Mac Launch.command Terminal 창 쌓임 방지
+
+- **스위트:** `—`
+- **대상:** 빌드스크립트 / BroadcastNasBridge / WorkLog / Mac 포터블
+- **유형:** 개선
+
+### 내용
+- `.command`가 앱을 포그라운드로 실행해 Terminal 창이 남을 때: `nohup` 분리 실행 + `osascript`로 front window 닫기
+- 동일 프로세스 이미 실행 중이면 재기동 생략 (`pgrep -x`)
+- `Write-MacCommandLauncher` / `package_osx_folder` / Bridge·WorkLog 패키지에 공통 적용
+- 기존 `Builded` Bridge Launch·SDM/CtrlOne Launch 파일 즉시 패치
+
+### 확인
+- [ ] Mac: Launch-*.command 더블클릭 → 앱만 뜨고 Terminal 창이 닫힘
+- [ ] 재실행 시 창·프로세스 중복 최소화
+- Win: 해당 없음
+
+## 2026-09-10 — SDM 일정 프리셋 NAS 공유
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager / BroadcastNasBridge
+- **유형:** 기능
+
+### 내용
+- 일정 추가 다이얼로그 프리셋을 NAS `_schedule-presets.json`에 저장·공유 (revision 충돌 시 병합)
+- 브라우저 localStorage 프리셋을 최초 연결 시 업로드/병합
+- **관리** 모드: 드래그·↑↓ 순서 변경, 수정(폼 반영 후 저장), 삭제
+- 일정 파일 목록에서 `schedule-presets.json` / `_schedule-presets.json` 제외 (Files 후보 필터 포함)
+- `sync-ui` → `wwwroot/schedule`
+
+### 확인
+- [ ] NAS 연결 후 프리셋 만들기 → 다른 PC에서 동일 목록
+- [ ] 관리에서 순서 변경·수정·삭제
+- [ ] Win / Mac 브리지·단독(로컬만) 동작
+
 ## 2026-09-10 — SDM 푸터·툴바 핏 · WL 인쇄 1열·2칸
 
 - **스위트:** `—`

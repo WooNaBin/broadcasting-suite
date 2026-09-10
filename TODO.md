@@ -50,6 +50,10 @@
 
 
 
+### ScheduleDataManager `[SDM]`
+
+
+
 
 ### ScheduleDataManager `[SDM]`
 
@@ -115,6 +119,14 @@
 
 ## 완료
 
+- [x] `#131` `[개선]` `[보통]` `[SDM]` `[WL]` 명단·인쇄양식 NAS 공유 · 제목규칙 A/B (2026-09-10)
+  - SDM `_speaker-roster.json` · WL `print-signs.json`에 `printCardStyle` · 제목규칙 `appendTarget`(기본 A)
+- [x] `#130` `[개선]` `[보통]` `[빌드]` `[공통]` Mac Launch.command Terminal 창 쌓임 방지 (2026-09-10)
+  - 백그라운드(`nohup`) 기동 후 `osascript`로 front window 닫기 · 이미 실행 중이면 재기동 생략
+  - ps1/sh 패키지·기존 Builded Launch 패치 · Mac 포터블에 Launch-*.command 자동 생성
+- [x] `#129` `[개선]` `[보통]` `[SDM]` 일정 프리셋 NAS 공유 · 관리(순서·수정) (2026-09-10)
+  - `_schedule-presets.json` · localStorage 마이그레이션 · 관리 모드(↑↓/드래그/수정/삭제)
+  - 일정 JSON 목록에서 제외 · sync-ui
 - [x] `#10` `[개선]` `[보통]` `[SDM]` 하단 공유파일 연결 섹션 레이아웃 (2026-09-10)
   - 제목·안내문·범례 제거 · 상태박스 옆 4버튼 · 연결파일/저장상태 가로 배치
 - [x] `#11` `[개선]` `[보통]` `[SDM]` 달력 위 툴바(기본보기~설정) 슬림화 (2026-09-10)

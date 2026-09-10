@@ -240,6 +240,10 @@ public sealed class FilesAppStore
         if (name.Equals("official-documents.json", StringComparison.OrdinalIgnoreCase)) return false;
         if (name.Equals("links.json", StringComparison.OrdinalIgnoreCase)) return false;
         if (name.Equals("_shared_notice.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("_schedule-presets.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("schedule-presets.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("_speaker-roster.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("speaker-roster.json", StringComparison.OrdinalIgnoreCase)) return false;
         return true;
     }
 

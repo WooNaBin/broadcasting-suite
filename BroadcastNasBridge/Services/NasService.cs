@@ -273,9 +273,16 @@ public sealed class NasService : IDisposable
         SeedIfMissing(Path.Combine(root, "defaults.json"), """
             {
               "version": 2,
+              "specialNotesMax": 10,
               "titleRules": [],
               "templateButtons": {},
               "customTemplates": []
+            }
+            """);
+        SeedIfMissing(Path.Combine(root, "special-notes.json"), """
+            {
+              "version": 1,
+              "notes": []
             }
             """);
     }
