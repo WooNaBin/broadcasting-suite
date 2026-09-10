@@ -15,11 +15,11 @@
 
 | 항목 | 값 |
 |------|-----|
-| 라벨 | `1.2.0.18_20260910` |
-| 버전 | `1.2.0` (build 18) |
-| 빌드 시각 | 2026-09-10 13:09:46 |
+| 라벨 | `1.2.0.20_20260910` |
+| 버전 | `1.2.0` (build 20) |
+| 빌드 시각 | 2026-09-10 17:18:05 |
 | 출력 | `D:\Projects\Builded` |
-| 통합 zip | `D:\Projects\Builded\BroadcastingApp_1.2.0.18_20260910.zip` |
+| 통합 zip | `D:\Projects\Builded\BroadcastingApp_1.2.0.20_20260910.zip` |
 | Windows | True |
 | Mac | False |
 | IncludeLegacy | True |
