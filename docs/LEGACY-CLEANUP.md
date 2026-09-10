@@ -1,9 +1,9 @@
 # 레거시 코드·프로그램 정리 (#116)
 
-상태: **1단계 완료** (2026-09-10) — 목록·삭제 기준·단계 계획 확정.  
-대규모 삭제는 아직 하지 않음. 브리지가 권장 진입점이다.
+상태: **2단계 반영** (2026-09-10) — 빌드 zip이 Bridge·CtrlOne·SR을 `Windows\`에, SDM/WL/FC를 `Windows\Legacy\`에 둔다.  
+`-IncludeLegacy:$false` 로 레거시 제외 가능. 소스 삭제는 아직 하지 않음.
 
-관련: [NAS-BRIDGE-PLAN.md](NAS-BRIDGE-PLAN.md) · [PROJECTS.md](../PROJECTS.md) · TODO `#116` `#61` `#105`
+관련: [NAS-BRIDGE-PLAN.md](NAS-BRIDGE-PLAN.md) · [PROJECTS.md](../PROJECTS.md) · TODO `#116` `#124` `#61`
 
 ---
 
@@ -25,7 +25,7 @@
 **지금은 유지 (폴백)**
 
 - `ScheduleDataManager/LocalBridge`, `WorkLog/LocalBridge`·`MacBridge`, `FileChecker` 단독 서버
-- 스위트 zip에 레거시 폴더 포함 (설치 바로가기는 이미 브리지)
+- 스위트 zip: `Windows\Legacy\` (또는 `-IncludeLegacy:$false` 로 생략). 설치 바로가기는 브리지
 
 **삭제 후보 (단계 진행 시, 백업·실기 후)**
 
@@ -59,8 +59,8 @@
 | 단계 | 내용 | 상태 |
 |------|------|------|
 | **1** | 이 문서 + PROJECTS/체크리스트에 레거시=폴백 명시 | **완료** |
-| **2** | 빌드 기본을 브리지 중심, 레거시는 `-IncludeLegacy` 또는 `Legacy\` 하위 | 미착수 (`#61`과 조율) |
-| **3** | 설치 시 레거시 폴더 복사 축소·격리 | 미착수 |
+| **2** | 빌드 기본을 브리지 중심, 레거시는 `-IncludeLegacy` / `Windows\Legacy\` · Mac `Legacy\` | **완료** (`#124` `#61` `#62`) |
+| **3** | 설치 시 레거시 폴더 복사 축소·격리 | 부분 (아이콘은 Legacy 경로 우선, 전체 복사는 유지) |
 | **4** | `Builded`·앱 `publish` 산출 정리 | 미착수 |
 | **5** | SMB 단일화 후 레거시 listen 포트 폐기 | 미착수 (실기 soak 후) |
 

@@ -4,7 +4,7 @@
   BroadcastingApp 통합 패키지 설치 (Windows 폴더만 복사).
 .DESCRIPTION
   이 스크립트는 통합 zip 루트(Windows / Mac / VERSION.txt 옆)에 둡니다.
-  Windows\* 내용을 선택한 설치 폴더로 복사하고, 선택 시 바탕화면\방송실 프로그램 폴더에 바로가기를 만듭니다.
+  Windows\* (권장 + Windows\Legacy)를 설치 폴더로 복사하고, 선택 시 바탕화면\방송실 프로그램 폴더에 바로가기를 만듭니다.
   스케줄·일지·파일체크는 BroadcastNasBridge(17820)로 엽니다.
 #>
 [CmdletBinding()]
@@ -126,7 +126,8 @@ if ($shortcutAnswer -match '^[Yy]') {
             Args = '/files/'
             WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
             Icon = $(
-                $fc = Join-Path $InstallDir 'FileChecker-Windows-x64\FileCheckerFinder.exe'
+                $fc = Join-Path $InstallDir 'Legacy\FileChecker-Windows-x64\FileCheckerFinder.exe'
+                if (-not (Test-Path $fc)) { $fc = Join-Path $InstallDir 'FileChecker-Windows-x64\FileCheckerFinder.exe' }
                 if (Test-Path $fc) { $fc } else { $bridgeExe }
             )
         },
@@ -136,7 +137,8 @@ if ($shortcutAnswer -match '^[Yy]') {
             Args = '/schedule/'
             WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
             Icon = $(
-                $sdm = Join-Path $InstallDir 'BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe'
+                $sdm = Join-Path $InstallDir 'Legacy\BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe'
+                if (-not (Test-Path $sdm)) { $sdm = Join-Path $InstallDir 'BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe' }
                 if (Test-Path $sdm) { $sdm } else { $bridgeExe }
             )
         },
@@ -146,7 +148,8 @@ if ($shortcutAnswer -match '^[Yy]') {
             Args = '/worklog/'
             WorkDir = (Join-Path $InstallDir 'BroadcastNasBridge-Windows-x64')
             Icon = $(
-                $wl = Join-Path $InstallDir 'WorkLog-Windows-x64\WorkLog.exe'
+                $wl = Join-Path $InstallDir 'Legacy\WorkLog-Windows-x64\WorkLog.exe'
+                if (-not (Test-Path $wl)) { $wl = Join-Path $InstallDir 'WorkLog-Windows-x64\WorkLog.exe' }
                 if (Test-Path $wl) { $wl } else { $bridgeExe }
             )
         },

@@ -401,44 +401,60 @@ fi
 
 # --- Suite bundle ---
 echo "== Suite bundle =="
+INCLUDE_LEGACY="${INCLUDE_LEGACY:-1}"
 BUNDLE_ROOT="$OUT/_bundle_stage/BroadcastingApp_$LABEL"
 rm -rf "$OUT/_bundle_stage"
-mkdir -p "$BUNDLE_ROOT/Windows" "$BUNDLE_ROOT/Mac"
-[[ -d "$CO_DEST/CtrlOne-Windows-x64" ]] && cp -R "$CO_DEST/CtrlOne-Windows-x64" "$BUNDLE_ROOT/Windows/"
-[[ -d "$FC_DEST/FileChecker-Windows-x64" ]] && cp -R "$FC_DEST/FileChecker-Windows-x64" "$BUNDLE_ROOT/Windows/"
-[[ -d "$SDM_DEST/BroadcastingSchedule-Windows-x64" ]] && cp -R "$SDM_DEST/BroadcastingSchedule-Windows-x64" "$BUNDLE_ROOT/Windows/"
-[[ -d "$WL_DEST/WorkLog-Windows-x64" ]] && cp -R "$WL_DEST/WorkLog-Windows-x64" "$BUNDLE_ROOT/Windows/"
-[[ -d "$SR_PORTABLE" ]] && cp -R "$SR_PORTABLE" "$BUNDLE_ROOT/Windows/"
+mkdir -p "$BUNDLE_ROOT/Windows" "$BUNDLE_ROOT/Mac/arm64" "$BUNDLE_ROOT/Mac/x64"
 [[ -d "$BNB_DEST/BroadcastNasBridge-Windows-x64" ]] && cp -R "$BNB_DEST/BroadcastNasBridge-Windows-x64" "$BUNDLE_ROOT/Windows/"
+[[ -d "$CO_DEST/CtrlOne-Windows-x64" ]] && cp -R "$CO_DEST/CtrlOne-Windows-x64" "$BUNDLE_ROOT/Windows/"
+[[ -d "$SR_PORTABLE" ]] && cp -R "$SR_PORTABLE" "$BUNDLE_ROOT/Windows/"
+if [[ "$INCLUDE_LEGACY" == "1" ]]; then
+  mkdir -p "$BUNDLE_ROOT/Windows/Legacy"
+  [[ -d "$FC_DEST/FileChecker-Windows-x64" ]] && cp -R "$FC_DEST/FileChecker-Windows-x64" "$BUNDLE_ROOT/Windows/Legacy/"
+  [[ -d "$SDM_DEST/BroadcastingSchedule-Windows-x64" ]] && cp -R "$SDM_DEST/BroadcastingSchedule-Windows-x64" "$BUNDLE_ROOT/Windows/Legacy/"
+  [[ -d "$WL_DEST/WorkLog-Windows-x64" ]] && cp -R "$WL_DEST/WorkLog-Windows-x64" "$BUNDLE_ROOT/Windows/Legacy/"
+fi
 
-# Mac payloads (있는 것만)
-[[ -d "$CO_DEST/CtrlOne-macOS-arm64" ]] && cp -R "$CO_DEST/CtrlOne-macOS-arm64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$CO_DEST/CtrlOne-macOS-x64" ]] && cp -R "$CO_DEST/CtrlOne-macOS-x64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$OUT/WorkLog/WorkLog-macOS-arm64.app" ]] && cp -R "$OUT/WorkLog/WorkLog-macOS-arm64.app" "$BUNDLE_ROOT/Mac/"
-[[ -d "$OUT/WorkLog/WorkLog-macOS-x64.app" ]] && cp -R "$OUT/WorkLog/WorkLog-macOS-x64.app" "$BUNDLE_ROOT/Mac/"
-[[ -d "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" ]] && cp -R "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" ]] && cp -R "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$FC_DEST/FileChecker-macOS-arm64" ]] && cp -R "$FC_DEST/FileChecker-macOS-arm64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$FC_DEST/FileChecker-macOS-x64" ]] && cp -R "$FC_DEST/FileChecker-macOS-x64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$BNB_DEST/BroadcastNasBridge-macOS-arm64" ]] && cp -R "$BNB_DEST/BroadcastNasBridge-macOS-arm64" "$BUNDLE_ROOT/Mac/"
-[[ -d "$BNB_DEST/BroadcastNasBridge-macOS-x64" ]] && cp -R "$BNB_DEST/BroadcastNasBridge-macOS-x64" "$BUNDLE_ROOT/Mac/"
+copy_mac() {
+  local arch="$1" dest="$BUNDLE_ROOT/Mac/$1"
+  shift
+  for src in "$@"; do
+    [[ -e "$src" ]] || continue
+    cp -R "$src" "$dest/"
+  done
+}
+copy_mac arm64 \
+  "$BNB_DEST/BroadcastNasBridge-macOS-arm64" \
+  "$CO_DEST/CtrlOne-macOS-arm64" \
+  "$OUT/WorkLog/WorkLog-macOS-arm64" \
+  "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-arm64" \
+  "$FC_DEST/FileChecker-macOS-arm64"
+copy_mac x64 \
+  "$BNB_DEST/BroadcastNasBridge-macOS-x64" \
+  "$CO_DEST/CtrlOne-macOS-x64" \
+  "$OUT/WorkLog/WorkLog-macOS-x64" \
+  "$OUT/ScheduleDataManager/BroadcastingSchedule-macOS-x64" \
+  "$FC_DEST/FileChecker-macOS-x64"
+if [[ "$INCLUDE_LEGACY" == "1" ]]; then
+  [[ -d "$OUT/WorkLog/WorkLog-macOS-arm64.app" ]] && mkdir -p "$BUNDLE_ROOT/Mac/arm64/Legacy" && cp -R "$OUT/WorkLog/WorkLog-macOS-arm64.app" "$BUNDLE_ROOT/Mac/arm64/Legacy/"
+  [[ -d "$OUT/WorkLog/WorkLog-macOS-x64.app" ]] && mkdir -p "$BUNDLE_ROOT/Mac/x64/Legacy" && cp -R "$OUT/WorkLog/WorkLog-macOS-x64.app" "$BUNDLE_ROOT/Mac/x64/Legacy/"
+fi
 
 cp "$ROOT/scripts/Install-BroadcastApps.ps1" "$BUNDLE_ROOT/"
 cp "$ROOT/scripts/Install-BroadcastApps.bat" "$BUNDLE_ROOT/"
+cat > "$BUNDLE_ROOT/HOW-TO-START.txt" <<EOF
+1) BroadcastNasBridge 실행 (권장)
+2) http://127.0.0.1:17820
+3) 일정 / 작업일지 / 파일체크 카드 진입
+EOF
 cat > "$BUNDLE_ROOT/Mac/README.txt" <<EOF
 macOS 배포본
 ============
+레이아웃: Mac/arm64/ · Mac/x64/
 
-포함
-- BroadcastNasBridge-macOS-arm64 / …-x64 (17820) ← 권장 진입점
-- CtrlOne-macOS-arm64 / …-x64 (5177)
-- WorkLog-macOS-arm64.app / WorkLog-macOS-x64.app (17822, 레거시)
-- BroadcastingSchedule-macOS-arm64 / …-x64 (17821, 레거시)
-
-미포함
-- FileChecker, ScheduleReader (Windows만)
-
-Gatekeeper: 우클릭 → 열기, 또는 xattr -dr com.apple.quarantine <앱>
+권장: BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
+WorkLog는 폴더형 Launch-WorkLog.command (.app은 Legacy/)
+Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <폴더>
 EOF
 cat > "$BUNDLE_ROOT/VERSION.txt" <<EOF
 BroadcastingApp suite
@@ -446,11 +462,12 @@ version: $(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['vers
 build: $(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['build'])")
 label: $LABEL
 stamp: $STAMP
+includeLegacy: $INCLUDE_LEGACY
 Apps:
 - CtrlOne (Windows + macOS)
-- FileChecker (Windows)
-- ScheduleDataManager (Windows + macOS)
-- WorkLog (Windows + macOS)
+- FileChecker (Windows Legacy)
+- ScheduleDataManager (Windows Legacy + macOS)
+- WorkLog (Windows Legacy + macOS)
 - ScheduleReader (Windows)
 - BroadcastNasBridge (Windows + macOS)
 EOF
@@ -460,21 +477,14 @@ cat > "$BUNDLE_ROOT/README.txt" <<EOF
 
 폴더 구성
 ---------
-- Windows\\   … Windows x64 포터블 앱
-- Mac\\       … macOS (CtrlOne, WorkLog, ScheduleDataManager, FileChecker)
-- Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
-- VERSION.txt
+- Windows\\          … Bridge, CtrlOne, ScheduleReader
+- Windows\\Legacy\\   … SDM / WorkLog / FileChecker 단독
+- Mac\\arm64\\ · Mac\\x64\\
+- Install-BroadcastApps.bat / .ps1
+- HOW-TO-START.txt · VERSION.txt
 
-설치 (권장, Windows)
------------
-1. zip 압축 해제
-2. Install-BroadcastApps.bat 실행
-3. 설치 폴더 선택
-4. Windows\\ 내용만 복사됨. 바탕화면 바로가기는 선택
-
-Mac은 Mac\\ 폴더의 앱을 직접 실행하세요.
-
-포트: Bridge 17820 / Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
+시작: Bridge → http://127.0.0.1:17820
+포트: Bridge 17820 / 레거시 17821·17822·5187 / SR 17823 / CtrlOne 5177
 EOF
 
 ZIP_OUT="$OUT/BroadcastingApp_$LABEL.zip"
@@ -483,9 +493,9 @@ rm -f "$ZIP_OUT"
 rm -rf "$OUT/_bundle_stage"
 echo "$LABEL" > "$OUT/LATEST.txt"
 echo "완료: $ZIP_OUT"
+echo "사용법: Bridge 실행 후 http://127.0.0.1:17820"
 ls -lh "$ZIP_OUT"
 
-# #111: 산출 폴더 열기 (macOS Finder / Linux)
 if command -v open >/dev/null 2>&1; then
   open "$OUT" || true
 elif command -v xdg-open >/dev/null 2>&1; then

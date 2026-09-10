@@ -48,7 +48,9 @@ param(
     [switch]$List,
     [switch]$Configure,
     [switch]$ShowConfig,
-    [switch]$Menu
+    [switch]$Menu,
+    # 레거시 SDM/WL/FC 단독 포터블을 통합 zip Windows\Legacy 에 포함 (기본 on). -IncludeLegacy:$false 로 제외.
+    [bool]$IncludeLegacy = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -369,8 +371,14 @@ function New-SuiteBundleZip {
 
     $windowsDir = Join-Path $stage 'Windows'
     $macDir = Join-Path $stage 'Mac'
+    $macArm = Join-Path $macDir 'arm64'
+    $macX64 = Join-Path $macDir 'x64'
+    $legacyDir = Join-Path $windowsDir 'Legacy'
     Ensure-Dir $windowsDir
-    Ensure-Dir $macDir
+    Ensure-Dir $macArm
+    Ensure-Dir $macX64
+
+    $legacyNames = @('FileChecker', 'ScheduleDataManager', 'WorkLog')
 
     foreach ($r in $OkResults) {
         if (-not $r.portable -or -not (Test-Path $r.portable)) {
@@ -378,30 +386,63 @@ function New-SuiteBundleZip {
             continue
         }
         $leaf = Split-Path $r.portable -Leaf
-        Write-Host "  + Windows\$leaf"
-        Copy-Item $r.portable (Join-Path $windowsDir $leaf) -Recurse -Force
+        if ($legacyNames -contains $r.name) {
+            if (-not $IncludeLegacy) {
+                Write-Host "  (Legacy 생략: $leaf)" -ForegroundColor DarkYellow
+                continue
+            }
+            Ensure-Dir $legacyDir
+            Write-Host "  + Windows\Legacy\$leaf"
+            Copy-Item $r.portable (Join-Path $legacyDir $leaf) -Recurse -Force
+        }
+        else {
+            Write-Host "  + Windows\$leaf"
+            Copy-Item $r.portable (Join-Path $windowsDir $leaf) -Recurse -Force
+        }
     }
 
-    # macOS 산출물이 Builded 아래에 있으면 Mac\ 로 복사
-    $macCandidates = @(
-        (Join-Path $OutRoot 'BroadcastNasBridge\BroadcastNasBridge-macOS-arm64'),
-        (Join-Path $OutRoot 'BroadcastNasBridge\BroadcastNasBridge-macOS-x64'),
-        (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-arm64'),
-        (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-x64'),
-        (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64.app'),
-        (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64.app'),
-        (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-arm64'),
-        (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-x64'),
-        (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-arm64'),
-        (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-x64')
+    # macOS: Mac\arm64\ · Mac\x64\ (#62). WorkLog는 폴더형 우선, .app은 Legacy 표기.
+    $macPairs = @(
+        @{ Arch = 'arm64'; Dest = $macArm; Paths = @(
+            (Join-Path $OutRoot 'BroadcastNasBridge\BroadcastNasBridge-macOS-arm64'),
+            (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-arm64'),
+            (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64'),
+            (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-arm64'),
+            (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-arm64')
+        ); LegacyApps = @(
+            (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-arm64.app')
+        ) },
+        @{ Arch = 'x64'; Dest = $macX64; Paths = @(
+            (Join-Path $OutRoot 'BroadcastNasBridge\BroadcastNasBridge-macOS-x64'),
+            (Join-Path $OutRoot 'CtrlOne\CtrlOne-macOS-x64'),
+            (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64'),
+            (Join-Path $OutRoot 'ScheduleDataManager\BroadcastingSchedule-macOS-x64'),
+            (Join-Path $OutRoot 'FileChecker\FileChecker-macOS-x64')
+        ); LegacyApps = @(
+            (Join-Path $OutRoot 'WorkLog\WorkLog-macOS-x64.app')
+        ) }
     )
     $macCopied = 0
-    foreach ($src in $macCandidates) {
-        if (Test-Path $src) {
-            $leaf = Split-Path $src -Leaf
-            Write-Host "  + Mac\$leaf"
-            Copy-Item $src (Join-Path $macDir $leaf) -Recurse -Force
-            $macCopied++
+    foreach ($pair in $macPairs) {
+        foreach ($src in $pair.Paths) {
+            if (Test-Path $src) {
+                $leaf = Split-Path $src -Leaf
+                Write-Host "  + Mac\$($pair.Arch)\$leaf"
+                Copy-Item $src (Join-Path $pair.Dest $leaf) -Recurse -Force
+                $macCopied++
+            }
+        }
+        if ($IncludeLegacy) {
+            $leg = Join-Path $pair.Dest 'Legacy'
+            foreach ($src in $pair.LegacyApps) {
+                if (Test-Path $src) {
+                    Ensure-Dir $leg
+                    $leaf = Split-Path $src -Leaf
+                    Write-Host "  + Mac\$($pair.Arch)\Legacy\$leaf"
+                    Copy-Item $src (Join-Path $leg $leaf) -Recurse -Force
+                    $macCopied++
+                }
+            }
         }
     }
     $macMarker = Join-Path $macDir 'README.txt'
@@ -410,15 +451,25 @@ function New-SuiteBundleZip {
 macOS 배포본이 없습니다.
 Mac에서 scripts/Build-BroadcastApps.sh --target macos (또는 -Target Mac) 로 빌드하세요.
 Windows에서도 -Target All 이면 가능한 앱은 크로스 게시합니다 (FileChecker·ScheduleReader 제외).
+
+레이아웃: Mac/arm64/ … Mac/x64/
+시작: BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
 "@.TrimEnd()
     }
     else {
         Write-Utf8NoBom $macMarker @"
 macOS 배포본
 ============
-BroadcastNasBridge / WorkLog / ScheduleDataManager / CtrlOne (arm64·x64)
-FileChecker·ScheduleReader 는 Windows만 (FileChecker는 WinForms).
-Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <앱>
+레이아웃: Mac/arm64/ 와 Mac/x64/ (#62)
+
+권장 시작
+---------
+1. 해당 CPU 폴더의 BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
+2. 브라우저 http://127.0.0.1:17820 → 일정·일지·파일체크
+
+WorkLog는 형제와 같이 폴더형(Launch-WorkLog.command). .app 은 Legacy/ 에 있을 수 있음.
+FileChecker·ScheduleReader 는 Windows만.
+Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <폴더>
 "@.TrimEnd()
     }
 
@@ -429,6 +480,7 @@ build: $($SuiteVersionInfo.build)
 label: $Label
 builtAt: $($BuildStarted.ToString('yyyy-MM-dd HH:mm:ss'))
 stamp: $Stamp
+includeLegacy: $IncludeLegacy
 
 Apps:
 $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
@@ -441,42 +493,49 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
 
 폴더 구성
 ---------
-- Windows\   … Windows x64 포터블 앱
-- Mac\       … macOS (BroadcastNasBridge, WorkLog, ScheduleDataManager, CtrlOne)
-- Install-BroadcastApps.bat / .ps1  … Windows 설치 도우미
+- Windows\          … 권장 앱 (Bridge, CtrlOne, ScheduleReader)
+- Windows\Legacy\   … 단독 SDM/WL/FC (브리지 없을 때 폴백, IncludeLegacy=$IncludeLegacy)
+- Mac\arm64\ · Mac\x64\  … CPU별 macOS 포터블
+- Install-BroadcastApps.bat / .ps1
 - VERSION.txt
 
-설치 (권장)
------------
+빠른 시작 (#63)
+---------------
 1. zip 압축 해제
-2. Install-BroadcastApps.bat 실행
-3. 설치 폴더 선택 (기본: %LOCALAPPDATA%\BroadcastingApp)
-4. Windows\ 내용만 복사됨. 바탕화면 바로가기는 선택
+2. Install-BroadcastApps.bat (Windows) 또는
+   Windows\BroadcastNasBridge-Windows-x64\Start-BroadcastNasBridge.bat
+3. 브라우저 http://127.0.0.1:17820
 
-수동 실행
----------
-- Windows\BroadcastNasBridge-Windows-x64\BroadcastNasBridge.exe  (권장 진입점, 17820)
-- Windows\CtrlOne-Windows-x64\CtrlOne.exe
-- Windows\FileChecker-Windows-x64\Start-FileCheckerFinder.bat
-- Windows\BroadcastingSchedule-Windows-x64\BroadcastingSchedule.exe
-- Windows\WorkLog-Windows-x64\WorkLog.exe
-- Windows\ScheduleReader-portable\Setup-And-Run.bat (최초) / serve.bat
+Mac: Mac\<arch>\BroadcastNasBridge-macOS-*\Launch-BroadcastNasBridge.command
 
-포트: Bridge 17820 / Schedule 17821 / WorkLog 17822 / ScheduleReader 17823 / CtrlOne 5177 / FileChecker 5187
-버전 정보: VERSION.txt
+포트: Bridge 17820 (권장) / 레거시 17821·17822·5187 / SR 17823 / CtrlOne 5177
+레거시 정리: docs/LEGACY-CLEANUP.md
 "@
     Write-Utf8NoBom (Join-Path $stage 'README.txt') $readme.TrimEnd()
+
+    $howTo = @"
+방송실 프로그램 — 사용 방법
+============================
+
+1) BroadcastNasBridge 실행 (필수 권장)
+2) http://127.0.0.1:17820 에서 NAS 연결
+3) 일정 / 작업일지 / 파일체크 카드로 진입
+
+단독 exe(Legacy)는 브리지가 꺼져 있을 때만 사용하세요.
+브리지가 켜져 있으면 단독 앱도 브리지 URL로만 열립니다.
+"@
+    Write-Utf8NoBom (Join-Path $stage 'HOW-TO-START.txt') $howTo.TrimEnd()
 
     $installerPs1 = Join-Path $PSScriptRoot 'Install-BroadcastApps.ps1'
     $installerBat = Join-Path $PSScriptRoot 'Install-BroadcastApps.bat'
     if (-not (Test-Path $installerPs1)) { throw "설치 스크립트 없음: $installerPs1" }
     if (-not (Test-Path $installerBat)) { throw "설치 스크립트 없음: $installerBat" }
-    # PS 5.1은 UTF-8 BOM이 있어야 한글 리터럴을 올바르게 읽음
     $installerText = [System.IO.File]::ReadAllText($installerPs1, [System.Text.UTF8Encoding]::new($false)).TrimStart([char]0xFEFF)
     $utf8Bom = New-Object System.Text.UTF8Encoding $true
     [System.IO.File]::WriteAllText((Join-Path $stage 'Install-BroadcastApps.ps1'), $installerText, $utf8Bom)
     Copy-Item $installerBat (Join-Path $stage 'Install-BroadcastApps.bat') -Force
     Write-Host "  + Install-BroadcastApps.ps1 / .bat"
+    Write-Host "  + HOW-TO-START.txt"
 
     $zipName = "BroadcastingApp_$Label.zip"
     $zipPath = Join-Path $OutRoot $zipName
@@ -525,7 +584,7 @@ function Invoke-DotnetPublish {
     foreach ($key in $ExtraProps.Keys) {
         $args += "-p:$key=$($ExtraProps[$key])"
     }
-    & dotnet @args
+    & dotnet @args | ForEach-Object { Write-Host $_ }
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish 실패: $Project ($Runtime)" }
 }
 
@@ -726,9 +785,10 @@ function Build-BroadcastNasBridge {
     }
 
     if ($WantMac) {
-        $macDirs = New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'BroadcastNasBridge' -BinaryName 'BroadcastNasBridge'
+        $macDirs = @(New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'BroadcastNasBridge' -BinaryName 'BroadcastNasBridge' |
+            Where-Object { $_ -is [string] -and (Test-Path -LiteralPath $_ -PathType Container) })
         foreach ($d in $macDirs) {
-            Write-MacCommandLauncher $d 'BroadcastNasBridge' 'Launch-BroadcastNasBridge.command'
+            Write-MacCommandLauncher -Dir ([string]$d) -BinaryName 'BroadcastNasBridge' -FileName 'Launch-BroadcastNasBridge.command'
         }
     }
 
@@ -1224,7 +1284,16 @@ if ($BundleZipPath) {
     Write-Host "통합 배포: $BundleZipPath" -ForegroundColor Green
 }
 
-# #111: 산출 폴더를 탐색기에서 열기
+Write-Host ""
+Write-Host "사용법 (#63)" -ForegroundColor Cyan
+Write-Host "  1) zip 압축 해제 후 Install-BroadcastApps.bat (Windows)"
+Write-Host "  2) 또는 Windows\BroadcastNasBridge-Windows-x64\Start-BroadcastNasBridge.bat"
+Write-Host "  3) 브라우저 http://127.0.0.1:17820"
+Write-Host "  Mac: Mac\<arm64|x64>\BroadcastNasBridge-macOS-*\Launch-BroadcastNasBridge.command"
+Write-Host "  레거시 SDM/WL/FC: Windows\Legacy\ (IncludeLegacy=$IncludeLegacy)"
+Write-Host "  출력 폴더: $OutRoot"
+
+# #111 / #63: 산출 폴더를 탐색기에서 열기
 try {
     if (Test-Path -LiteralPath $OutRoot) {
         Start-Process explorer.exe -ArgumentList $OutRoot

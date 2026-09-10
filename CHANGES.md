@@ -36,6 +36,49 @@
 
 ## 기록
 
+## 2026-09-10 — 스위트 1.2.0 · SDM UI · FC Mac · 빌드 레이아웃
+
+- **스위트:** `1.2.0.15_20260910`
+- **대상:** ScheduleDataManager / FileChecker / WorkLog / BroadcastNasBridge(wwwroot) / 빌드스크립트 / 문서
+- **유형:** 기능 | 수정 | 배포 | 문서
+- **TODO:** `#10`–`#20` `#40` `#61` `#62` `#63` `#124`
+
+### 내용
+- **SDM `#10`–`#20` (Win/Mac UI 공통, 브리지 sync-ui)**
+  - 헤더 슬림·테마 라벨 · 인트로 간격 · 연결 섹션을 보드 하단 푸터
+  - NAS 경로 ellipsis + 클릭 시 전체 경로
+  - Mac 월일정 이미지: NFC·basename·확장자 매칭 보강 (삭제/경로 추측 최소화)
+  - 달력 빈칸 → 일정보기 · 토/일 톤 · 타이틀 glow · 월·날짜 타이포 · 공유사항 읽기톤
+  - 일괄 입력 색상 = 단일/기간과 같은 칩 UI
+- **FC `#40` (Mac 단독 경로)**
+  - `FindExistingMacShareMount`로 Bridge mnt · `/Volumes` · `mount` 테이블 재사용
+  - 실패/테스트 메시지에 브리지·로컬 네트워크 권한 안내
+- **빌드 `#61` `#62` `#63` `#124`**
+  - WorkLog Mac: 폴더형 `WorkLog-macOS-{arch}` + Launch.command (`.app` → Mac\*\Legacy)
+  - zip: `Mac\arm64\` · `Mac\x64\` · `Windows\`(Bridge/CtrlOne/SR) · `Windows\Legacy\`(SDM/WL/FC)
+  - `-IncludeLegacy` (기본 true) · HOW-TO-START.txt · 빌드 종료 사용법 출력
+  - Install 아이콘 경로 Legacy 우선 · LEGACY-CLEANUP 2단계 반영
+
+### Win / Mac 영향
+| 항목 | Windows | macOS |
+|------|---------|-------|
+| SDM UI | 브라우저/브리지 동일 | 동일 · `#12` 이미지 **실기 확인** |
+| FC 마운트 | 변경 없음(Win 경로) | 재사용·메시지 · **실기 확인** |
+| 배포 zip | Legacy 하위 | arch 분리 · WorkLog 폴더형 |
+
+### 위험
+- 설치 후 SDM/WL/FC 경로가 `Windows\Legacy\`로 이동 (바로가기는 계속 브리지)
+- Mac 실기 없이 `#12` `#40` 완전 검증 불가
+
+### 확인
+- [x] `Build-BroadcastApps.ps1 -Bump Minor` → `1.2.0.15_20260910` zip
+- [ ] Windows: Bridge 시작 → `/schedule` 레이아웃·일괄색상·달력 빈칸
+- [ ] Mac 실기: 월일정 이미지 · FC NAS 테스트 · 마운트 수
+- [x] zip 레이아웃 `Windows\Legacy` · `Mac\arm64|x64` (폴더형 WorkLog + Legacy `.app`)
+
+### 보류 (이번 라운드 코드 변경 없음)
+- `#2` 실기 스모크 · SR `#20` · 아이디어 `#80` `#117`–`#121`
+
 ## 2026-09-10 — Mac 중복 마운트 방지 · 레거시 정리 1단계
 
 - **스위트:** `—`
