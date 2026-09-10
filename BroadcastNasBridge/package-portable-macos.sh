@@ -21,21 +21,20 @@ package_rid() {
   rm -rf "$dest"
   mkdir -p "$dest"
   cp -R "$stage"/* "$dest/"
-  # 런처: Terminal 창이 남지 않도록 백그라운드 기동 후 창 닫기
+  # 런처: 항상 기동(이미 떠 있으면 mutex가 브라우저만 연다) 후 Terminal 창 닫기
   cat > "$dest/Launch-BroadcastNasBridge.command" <<'EOF'
 #!/bin/bash
 cd "$(dirname "$0")" || exit 1
 BIN="./BroadcastNasBridge"
 chmod +x "$BIN" 2>/dev/null || true
-if ! pgrep -xq "BroadcastNasBridge" >/dev/null 2>&1; then
-  nohup "$BIN" >/dev/null 2>&1 &
-  disown 2>/dev/null || true
-fi
+echo "시작 중… (BroadcastNasBridge)"
+nohup "$BIN" >/dev/null 2>&1 &
+disown 2>/dev/null || true
 osascript >/dev/null 2>&1 <<'OSA' &
-delay 0.2
+delay 0.4
 tell application "Terminal"
   try
-    close front window saving no
+    if (count of windows) > 0 then close front window saving no
   end try
 end tell
 OSA

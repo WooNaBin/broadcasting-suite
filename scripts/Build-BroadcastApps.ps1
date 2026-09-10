@@ -921,21 +921,20 @@ function Sync-BridgeUi {
 
 function Write-MacCommandLauncher([string]$Dir, [string]$BinaryName, [string]$FileName = 'Launch.command') {
     $path = Join-Path $Dir $FileName
-    # Finder .command는 Terminal을 연다. 앱은 분리 실행하고 창을 닫아 쌓임을 막는다.
+    # Finder .command는 Terminal을 연다. 앱은 항상 기동(이미 떠 있으면 mutex/브라우저 처리) 후 창을 닫는다.
     $body = @"
 #!/bin/bash
 cd "`$(dirname "`$0")" || exit 1
 BIN="./$BinaryName"
 chmod +x "`$BIN" 2>/dev/null || true
-if ! pgrep -xq "$BinaryName" >/dev/null 2>&1; then
-  nohup "`$BIN" >/dev/null 2>&1 &
-  disown 2>/dev/null || true
-fi
+echo "시작 중… ($BinaryName)"
+nohup "`$BIN" >/dev/null 2>&1 &
+disown 2>/dev/null || true
 osascript >/dev/null 2>&1 <<'OSA' &
-delay 0.2
+delay 0.4
 tell application "Terminal"
   try
-    close front window saving no
+    if (count of windows) > 0 then close front window saving no
   end try
 end tell
 OSA

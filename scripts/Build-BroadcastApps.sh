@@ -209,7 +209,8 @@ package_osx_folder() {
   done
 }
 
-# Finder .command → Terminal 창 없이 앱만 남기기
+# Finder .command → 앱 기동 후 Terminal 창 닫기
+# (이미 실행 중이어도 호출: Bridge는 mutex로 브라우저만 연다. pgrep 스킵 금지)
 write_mac_command_launcher() {
   local dir="$1" bin="$2" file="${3:-Launch.command}"
   cat > "$dir/$file" <<EOF
@@ -217,15 +218,14 @@ write_mac_command_launcher() {
 cd "\$(dirname "\$0")" || exit 1
 BIN="./$bin"
 chmod +x "\$BIN" 2>/dev/null || true
-if ! pgrep -xq "$bin" >/dev/null 2>&1; then
-  nohup "\$BIN" >/dev/null 2>&1 &
-  disown 2>/dev/null || true
-fi
+echo "시작 중… ($bin)"
+nohup "\$BIN" >/dev/null 2>&1 &
+disown 2>/dev/null || true
 osascript >/dev/null 2>&1 <<'OSA' &
-delay 0.2
+delay 0.4
 tell application "Terminal"
   try
-    close front window saving no
+    if (count of windows) > 0 then close front window saving no
   end try
 end tell
 OSA
@@ -606,8 +606,10 @@ if manual_start in text and manual_end in text:
     manual = text[i0:i1].rstrip()
 full = header + "\n" + auto + "\n\n---\n\n" + manual + "\n"
 doc.parent.mkdir(parents=True, exist_ok=True)
-doc.write_text(full, encoding="utf-8", newline="\n")
-(out / "BUILD-VERIFY.md").write_text(full, encoding="utf-8", newline="\n")
+# Path.write_text(newline=...) 는 Python 3.10+ — macOS 기본 3.9 호환
+full = full.replace("\r\n", "\n").replace("\r", "\n")
+doc.write_text(full, encoding="utf-8")
+(out / "BUILD-VERIFY.md").write_text(full, encoding="utf-8")
 print(f"빌드 확인 문서: {doc}")
 print(f"             → {out / 'BUILD-VERIFY.md'}")
 PY

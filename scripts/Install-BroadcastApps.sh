@@ -98,29 +98,49 @@ write_launcher() {
   local work_dir="$2"
   local bin_rel="$3"
   local arg="${4:-}"
-  cat > "$out" <<EOF
+  local bin_name
+  bin_name="$(basename "$bin_rel")"
+  # 이미 실행 중이어도 바이너리를 다시 호출한다(브리지는 mutex로 브라우저만 연다).
+  # pgrep으로 건너뛰면 Terminal만 뜨고 화면이 안 열린다.
+  if [[ -n "$arg" ]]; then
+    cat > "$out" <<EOF
 #!/bin/bash
-cd "$work_dir" || exit 1
+cd "$work_dir" || { echo "설치 폴더 없음: $work_dir"; read -r -p "Enter… "; exit 1; }
 BIN="./$bin_rel"
 chmod +x "\$BIN" 2>/dev/null || true
-if [[ -n "$arg" ]]; then
-  nohup "\$BIN" "$arg" >/dev/null 2>&1 &
-else
-  if ! pgrep -xq "$(basename "$bin_rel")" >/dev/null 2>&1; then
-    nohup "\$BIN" >/dev/null 2>&1 &
-  fi
-fi
+echo "시작 중… ($bin_name $arg)"
+nohup "\$BIN" "$arg" >/dev/null 2>&1 &
 disown 2>/dev/null || true
 osascript >/dev/null 2>&1 <<'OSA' &
-delay 0.2
+delay 0.4
 tell application "Terminal"
   try
-    close front window saving no
+    if (count of windows) > 0 then close front window saving no
   end try
 end tell
 OSA
 exit 0
 EOF
+  else
+    cat > "$out" <<EOF
+#!/bin/bash
+cd "$work_dir" || { echo "설치 폴더 없음: $work_dir"; read -r -p "Enter… "; exit 1; }
+BIN="./$bin_rel"
+chmod +x "\$BIN" 2>/dev/null || true
+echo "시작 중… ($bin_name)"
+nohup "\$BIN" >/dev/null 2>&1 &
+disown 2>/dev/null || true
+osascript >/dev/null 2>&1 <<'OSA' &
+delay 0.4
+tell application "Terminal"
+  try
+    if (count of windows) > 0 then close front window saving no
+  end try
+end tell
+OSA
+exit 0
+EOF
+  fi
   chmod +x "$out"
 }
 
