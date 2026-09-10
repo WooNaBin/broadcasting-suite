@@ -57,10 +57,15 @@
       const target = el.getAttribute("data-app");
       const status = await refresh();
       if (!status?.connected) {
+        // 미연결일 때만 NAS 설정으로 — 팝업 차단 시에도 설정으로 오해되지 않게 next 유지
         location.href = `/setup.html?next=${encodeURIComponent(target)}`;
         return;
       }
-      window.open(target, "_blank");
+      // 새 탭이 막히면 같은 탭으로 진입 (작업일지 로그인 고착·설정 오인 방지)
+      const opened = window.open(target, "_blank");
+      if (!opened || opened.closed) {
+        location.href = target;
+      }
     });
   });
 

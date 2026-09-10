@@ -6,15 +6,16 @@
 
 ```
 BroadcastingApp_<label>\
-  Windows\          ← 포터블 앱 (CtrlOne-Windows-x64 등)
-  Mac\              ← 추후
+  Windows\              ← Bridge, CtrlOne, ScheduleReader
+  Windows\Legacy\       ← SDM / WorkLog / FileChecker 단독 (폴백)
+  Mac\arm64\ · Mac\x64\ ← CPU별
   Install-BroadcastApps.bat / .ps1
-  VERSION.txt / README.txt
+  HOW-TO-START.txt · VERSION.txt · README.txt
 ```
 
-- [ ] zip 해제 후 `Install-BroadcastApps.bat`로 설치 폴더 선택 (기본 `%LOCALAPPDATA%\BroadcastingApp`) — **Windows\만** 복사
-- [ ] 또는 `Windows\` 아래 각 앱 폴더를 직접 실행
-
+- [ ] zip 해제 후 `Install-BroadcastApps.bat`로 설치 폴더 선택 (기본 `%LOCALAPPDATA%\BroadcastingApp`) — **Windows\** (+ Legacy) 복사
+- [ ] 또는 `Windows\` / `Windows\Legacy\` 아래 각 앱 폴더를 직접 실행
+- [ ] **빌드별 실기 체크:** [BUILD-VERIFY.md](BUILD-VERIFY.md) (매 빌드 자동 갱신)
 ## 공통
 
 - [ ] Windows 10/11 x64 (Mac은 Bridge·CtrlOne·SDM·WL·FC 해당분)

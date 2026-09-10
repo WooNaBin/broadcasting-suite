@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NAS 설정 · UI 데모</title>
+  <link rel="stylesheet" href="css/hub.css" />
+  <link rel="stylesheet" href="../../demos/demo-banner.css" />
+</head>
+<body>
+  <div class="ui-demo-banner" role="status">
+    <strong>NAS 설정 목업</strong>
+    <span>저장·연결 없음 · 폼 레이아웃만</span>
+    <a href="demo.html">허브 데모</a>
+    <span class="sep">·</span>
+    <a href="../../demos/">데모 허브</a>
+  </div>
+  <main class="shell narrow">
+    <header class="hero compact">
+      <h1>NAS 설정</h1>
+    </header>
+
+    <form class="form" onsubmit="event.preventDefault(); document.getElementById('setup-msg').hidden=false;">
+      <div class="mode-row">
+        <label><input type="radio" name="hostMode" value="manual" checked /> 직접 입력</label>
+        <label><input type="radio" name="hostMode" value="scan" /> 네트워크 검색</label>
+      </div>
+
+      <div class="host-row">
+        <div>
+          <label for="host">NAS IP</label>
+          <input id="host" name="host" value="192.168.0.10" />
+        </div>
+        <button type="button" class="ghost" disabled>검색</button>
+      </div>
+
+      <label>계정 <input name="username" value="demo" /></label>
+      <label>비밀번호 <input name="password" type="password" value="••••••••" /></label>
+      <label class="check"><input type="checkbox" checked disabled /> 비밀번호 기억 (데모)</label>
+
+      <fieldset>
+        <legend>Temp DATA (스케줄·일지)</legend>
+        <label>공유명 <input value="Temp DATA" /></label>
+        <label>스케줄 상대경로 <input value="_data" /></label>
+        <label>일지 상대경로 <input value="_data/_work_log" /></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Permanent DATA (미디어)</legend>
+        <label>공유명 <input value="Permanent DATA" /></label>
+        <label>미디어 상대경로 <input value="H264_mp4 DATA" /></label>
+      </fieldset>
+
+      <p id="setup-msg" class="msg" hidden>데모: 연결하지 않습니다. 실사용은 브리지 실행 후 setup.html 을 쓰세요.</p>
+      <div class="actions">
+        <button type="submit">연결·저장 (데모)</button>
+        <a class="ghost btn" href="demo.html">허브로</a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

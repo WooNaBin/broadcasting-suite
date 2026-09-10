@@ -12,14 +12,15 @@ param(
     [string]$InstallDir = ''
 )
 
-# Windows PowerShell 5.1: 파일은 UTF-8 BOM. 콘솔이 65001이면 출력도 UTF-8, 아니면 OEM(한글 Windows는 CP949).
+# Windows PowerShell 5.1: 파일은 UTF-8 BOM. 콘솔 UTF-8로 고정해 한글 깨짐 완화.
 try {
-    if ([Console]::OutputEncoding.CodePage -eq 65001) {
-        $utf8 = New-Object System.Text.UTF8Encoding $false
-        [Console]::InputEncoding = $utf8
-        [Console]::OutputEncoding = $utf8
-        $OutputEncoding = $utf8
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    if (Get-Command chcp -ErrorAction SilentlyContinue) {
+        chcp 65001 | Out-Null
     }
+    [Console]::InputEncoding = $utf8
+    [Console]::OutputEncoding = $utf8
+    $OutputEncoding = $utf8
 }
 catch { }
 
@@ -155,12 +156,16 @@ if ($shortcutAnswer -match '^[Yy]') {
         },
         @{
             Name = '스케쥴 생성 유틸'
-            Target = (Join-Path $InstallDir 'ScheduleReader-portable\Setup-And-Run.bat')
+            Target = (Join-Path $InstallDir 'ScheduleReader-Windows-x64\ScheduleReader.exe')
             Args = ''
-            WorkDir = (Join-Path $InstallDir 'ScheduleReader-portable')
+            WorkDir = (Join-Path $InstallDir 'ScheduleReader-Windows-x64')
             Icon = $(
-                $ico = Join-Path $InstallDir 'ScheduleReader-portable\app.ico'
-                if (Test-Path $ico) { $ico } else { (Join-Path $InstallDir 'ScheduleReader-portable\Setup-And-Run.bat') }
+                $exe = Join-Path $InstallDir 'ScheduleReader-Windows-x64\ScheduleReader.exe'
+                if (Test-Path $exe) { $exe }
+                else {
+                    $legacy = Join-Path $InstallDir 'ScheduleReader-portable\Setup-And-Run.bat'
+                    if (Test-Path $legacy) { $legacy } else { $null }
+                }
             )
         }
     )

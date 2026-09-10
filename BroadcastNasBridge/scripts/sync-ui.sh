@@ -24,6 +24,7 @@ sync_worklog() {
   mkdir -p "$dest"
   [[ -d "$src" ]] || return 0
   cp -f "$src/index.html" "$src/styles.css" "$src/templates.js" "$dest/" 2>/dev/null || true
+  cp -f "$src/demo-boot.js" "$dest/" 2>/dev/null || true
   if [[ -f "$dest/index.html" ]]; then
     sed -i.bak \
       -e 's|href="/styles.css"|href="/worklog/styles.css"|' \

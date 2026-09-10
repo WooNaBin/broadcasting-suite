@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>방송실 허브 · UI 데모</title>
+  <link rel="stylesheet" href="css/hub.css" />
+  <link rel="stylesheet" href="../../demos/demo-banner.css" />
+</head>
+<body>
+  <div class="ui-demo-banner" role="status">
+    <strong>브리지 허브 데모</strong>
+    <span>NAS 없이 레이아웃만 · 앱 카드는 각 UI 데모로 이동</span>
+    <a href="../../demos/">데모 허브</a>
+  </div>
+  <main class="shell">
+    <header class="hero compact">
+      <h1>방송실 프로그램</h1>
+      <div class="status-row">
+        <span id="badge" class="badge ok">데모 · NAS 없음</span>
+        <a class="ghost btn" href="setup-demo.html">NAS 설정(목업)</a>
+      </div>
+      <div id="nas-info" class="nas-info">
+        <div><span class="k">NAS</span><span class="v">demo.local</span></div>
+        <div><span class="k">스케줄</span><span class="v">demo://schedule</span></div>
+        <div><span class="k">일지</span><span class="v">demo://work-log</span></div>
+        <div><span class="k">미디어</span><span class="v">demo://media</span></div>
+      </div>
+    </header>
+
+    <section class="apps" aria-label="앱 데모">
+      <a class="app-card" href="../../ScheduleDataManager/index.html?demo=1"><strong>스케줄</strong></a>
+      <a class="app-card" href="../../WorkLog/www/index.html?demo=1"><strong>작업일지</strong></a>
+      <a class="app-card" href="../../FileChecker/wwwroot/index.html?demo=1"><strong>파일체크</strong></a>
+    </section>
+  </main>
+</body>
+</html>

@@ -117,7 +117,7 @@
 | WorkLog | .NET LocalBridge / MacBridge + `www/` (+ 선택 `nas-api`) |
 | FileChecker | ASP.NET Core + `wwwroot` (Windows + macOS portable) |
 | CtrlOne | ASP.NET Core + SignalR + HyperDeck TCP |
-| ScheduleReader | Python FastAPI + Excel(openpyxl) |
+| ScheduleReader | ASP.NET Core + Open XML (엑셀·도형) · self-contained exe |
 
 ---
 
@@ -189,29 +189,30 @@
 
 ```
 BroadcastingApp_<label>/
-  Windows/          ← BroadcastNasBridge-Windows-x64, CtrlOne-…, …
-  Mac/              ← 브리지·CtrlOne·SDM·WorkLog (있는 것만)
-  VERSION.txt
-  README.txt
+  Windows/              ← Bridge, CtrlOne, ScheduleReader
+  Windows/Legacy/       ← SDM / WorkLog / FileChecker 폴백
+  Mac/arm64/ · Mac/x64/
+  VERSION.txt · README.txt · HOW-TO-START.txt
   Install-BroadcastApps.bat / .ps1
 ```
 
-설치 시 `Install-BroadcastApps.bat`로 위치를 고르면 **Windows\만** 복사한다 (바탕화면 바로가기 선택 가능).  
-ScheduleReader는 **엑셀 추출**용 Python 패키지입니다(이미지 OCR 모델 불필요). 배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md).
+설치 시 `Install-BroadcastApps.bat`로 위치를 고르면 **Windows\**(+ Legacy)를 복사한다 (바탕화면 바로가기는 브리지 중심).  
+ScheduleReader는 **엑셀 추출**용 .NET 단일 exe입니다(Python·OCR 불필요).  
+배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md) · **빌드별 실기:** [docs/BUILD-VERIFY.md](docs/BUILD-VERIFY.md).
 
 | 앱 | 산출물 (outRoot 아래) |
 |----|----------------|
 | BroadcastNasBridge | `BroadcastNasBridge-Windows-x64\`, macOS arm64/x64 |
 | CtrlOne | `CtrlOne\CtrlOne.exe`, `CtrlOne-Windows-x64-YYYYMMDD.zip` |
-| FileChecker | `FileChecker\FileCheckerFinder.exe`, zip (**data 제외**, Windows만) |
-| ScheduleDataManager | `BroadcastingSchedule-Windows-x64\`, zip |
-| WorkLog | `WorkLog-Windows-x64\`, zip · macOS `.app` |
-| ScheduleReader | `ScheduleReader-portable\` (Python + Setup-And-Run.bat), zip · Windows만 |
+| FileChecker | `FileChecker\FileCheckerFinder.exe`, zip (**data 제외**, Windows만) → 스위트 `Windows\Legacy\` |
+| ScheduleDataManager | `BroadcastingSchedule-Windows-x64\`, zip → 스위트 Legacy |
+| WorkLog | `WorkLog-Windows-x64\` · macOS **폴더형**(+ Legacy `.app`) |
+| ScheduleReader | `ScheduleReader-Windows-x64\ScheduleReader.exe`, macOS arm64/x64 |
 
-- 요약 파일: `BUILD-INFO.md`, `manifest.json`
+- 요약 파일: `BUILD-INFO.md`, `manifest.json`, **`BUILD-VERIFY.md`** (실기 체크·매 빌드 자동 구역)
 - 환경 변수: `BROADCAST_BUILD_DIR`, `WORKLOG_BUILD_DIR`, `SCHEDULE_BUILD_DIR`
 - FileChecker `data/`는 **배포 zip에 넣지 않는다**.
-- FileChecker·ScheduleReader는 Windows 전용. Mac 타겟에서는 건너뛴다.
+- FileChecker는 Windows 전용. ScheduleReader는 Windows + Mac.
 
 ---
 

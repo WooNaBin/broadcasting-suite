@@ -1,0 +1,36 @@
+/* 스위트 UI 데모 공통 배너 (NAS 없이 디자인 확인) */
+.ui-demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1rem;
+  padding: 0.55rem 1rem;
+  background: #14181f;
+  color: #f3f5f8;
+  font: 600 0.84rem/1.35 "Segoe UI", system-ui, sans-serif;
+  border-bottom: 1px solid #2a3340;
+}
+.ui-demo-banner strong {
+  color: #ffd166;
+  letter-spacing: 0.02em;
+}
+.ui-demo-banner span {
+  opacity: 0.88;
+  font-weight: 500;
+}
+.ui-demo-banner a {
+  color: #9ecbff;
+  text-decoration: none;
+}
+.ui-demo-banner a:hover {
+  text-decoration: underline;
+}
+.ui-demo-banner .sep {
+  opacity: 0.35;
+}
+body.ui-demo-mode {
+  /* 배너가 sticky 이므로 추가 패딩은 보통 불필요 */
+}

@@ -21,7 +21,8 @@ public sealed record FilesScheduleInput(
     bool HasInstructor,
     string? Instructor,
     bool SpecialSong,
-    bool YouTube);
+    bool YouTube,
+    string? Place = null);
 
 public sealed record FilesStoredSchedule(Guid Id, FilesScheduleInput Input);
 
@@ -354,7 +355,8 @@ public sealed class FilesAppStore
                 !string.IsNullOrWhiteSpace(speaker),
                 string.IsNullOrWhiteSpace(speaker) ? null : speaker.Trim(),
                 HasPreparationFlag(item, "Praise"),
-                HasPreparationFlag(item, "Streaming"));
+                HasPreparationFlag(item, "Streaming"),
+                GetStringProp(item, "place"));
             return true;
         }
         catch { return false; }
@@ -461,6 +463,7 @@ public sealed class FilesAppStore
             instructor = item.Input.Instructor,
             specialSong = item.Input.SpecialSong,
             youTube = item.Input.YouTube,
+            place = item.Input.Place,
             localAudioFound = localAudio is not null,
             localVideoFound = localVideo is not null,
             localHighQualityFound = localHq is not null,

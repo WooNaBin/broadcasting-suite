@@ -317,60 +317,27 @@ fi
 # --- ScheduleReader ---
 echo "== ScheduleReader =="
 SR_DEST="$OUT/ScheduleReader"
-SR_PORTABLE="$SR_DEST/ScheduleReader-portable"
-if [[ "$WANT_WIN" -eq 1 ]]; then
-rm -rf "$SR_PORTABLE"
-mkdir -p "$SR_PORTABLE"
-cp -R "$ROOT/ScheduleReader/schedule_reader" "$SR_PORTABLE/"
-cp -R "$ROOT/ScheduleReader/config" "$SR_PORTABLE/"
-cp "$ROOT/ScheduleReader/requirements.txt" "$SR_PORTABLE/"
-[[ -f "$ROOT/ScheduleReader/README.md" ]] && cp "$ROOT/ScheduleReader/README.md" "$SR_PORTABLE/"
-[[ -d "$ROOT/ScheduleReader/models" ]] && cp -R "$ROOT/ScheduleReader/models" "$SR_PORTABLE/"
-mkdir -p "$SR_PORTABLE/input" "$SR_PORTABLE/output"
-export SR_PORTABLE
-python3 - <<'PY'
-from pathlib import Path
-import os
-portable = Path(os.environ["SR_PORTABLE"])
-(portable / "serve.bat").write_text("""@echo off
-cd /d "%~dp0"
-if exist ".venv\\Scripts\\python.exe" (
-  ".venv\\Scripts\\python.exe" -m schedule_reader
-) else (
-  echo Run Setup-And-Run.bat first.
-  pause
-)
-""", encoding="utf-8")
-(portable / "Setup-And-Run.bat").write_text("""@echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-set PYEXE=py -3
-where py >nul 2>&1 || set PYEXE=python
-echo Using: %PYEXE%
-if not exist ".venv\\Scripts\\python.exe" (
-  %PYEXE% -m venv .venv
-  if errorlevel 1 ( echo Failed to create venv. & pause & exit /b 1 )
-)
-".venv\\Scripts\\python.exe" -m pip install --upgrade pip
-".venv\\Scripts\\python.exe" -m pip install -r requirements.txt
-if errorlevel 1 ( echo pip install failed. & pause & exit /b 1 )
-call "%~dp0serve.bat"
-""", encoding="utf-8")
-(portable / "README-DEPLOY.txt").write_text(
-"""ScheduleReader 배포 패키지
-==========================
-
-1. 이 폴더를 대상 PC에 복사
-2. Python 3.11+ 설치 (python.org 권장)
-3. Setup-And-Run.bat 실행
-4. 이후: serve.bat
-5. 브라우저: http://127.0.0.1:17823
-""", encoding="utf-8")
-print("ScheduleReader staged", portable)
-PY
-zip_dir "$SR_PORTABLE" "$SR_DEST/ScheduleReader-portable-$STAMP.zip"
-else
-  echo "  ScheduleReader는 Windows 패키지만 — 건너뜀"
+SR_CSPROJ="$ROOT/ScheduleReader/ScheduleReader.csproj"
+mkdir -p "$SR_DEST"
+if [[ ! -f "$SR_CSPROJ" ]]; then
+  echo "  ScheduleReader.csproj 없음 — 건너뜀" >&2
+elif [[ "$WANT_WIN" -eq 1 ]]; then
+  SR_STAGE="$SR_DEST/_stage"
+  rm -rf "$SR_STAGE" "$SR_DEST/ScheduleReader-Windows-x64"
+  mkdir -p "$SR_STAGE" "$SR_DEST/ScheduleReader-Windows-x64"
+  publish_win "$SR_CSPROJ" "$SR_STAGE"
+  cp "$SR_STAGE/ScheduleReader.exe" "$SR_DEST/ScheduleReader.exe"
+  cp "$SR_STAGE/ScheduleReader.exe" "$SR_DEST/ScheduleReader-Windows-x64/ScheduleReader.exe"
+  printf '%s\n' '@echo off' 'chcp 65001 >nul' 'cd /d "%~dp0"' 'start "" "%~dp0ScheduleReader.exe"' \
+    > "$SR_DEST/ScheduleReader-Windows-x64/serve.bat"
+  printf '%s\n' 'ScheduleReader — ScheduleReader.exe 실행 → http://127.0.0.1:17823 (Python 불필요)' \
+    > "$SR_DEST/ScheduleReader-Windows-x64/README-DEPLOY.txt"
+  rm -rf "$SR_STAGE"
+  zip_dir "$SR_DEST/ScheduleReader-Windows-x64" "$SR_DEST/ScheduleReader-Windows-x64-$STAMP.zip"
+fi
+if [[ "$WANT_MAC" -eq 1 && -f "$SR_CSPROJ" ]]; then
+  echo "== ScheduleReader macOS =="
+  package_osx_folder "$SR_CSPROJ" "$SR_DEST" "ScheduleReader" "ScheduleReader" || echo "  ScheduleReader Mac 건너뜀" >&2
 fi
 
 # --- BroadcastNasBridge (통합 NAS) ---
@@ -492,8 +459,105 @@ rm -f "$ZIP_OUT"
 (cd "$OUT/_bundle_stage" && zip -qr "$ZIP_OUT" "BroadcastingApp_$LABEL")
 rm -rf "$OUT/_bundle_stage"
 echo "$LABEL" > "$OUT/LATEST.txt"
+# 빌드 확인 문서 (자동 구역만 갱신, 수동 구역 유지)
+VERIFY_DOC="$ROOT/docs/BUILD-VERIFY.md"
+VERIFY_OUT="$OUT/BUILD-VERIFY.md"
+python3 - <<PY
+from pathlib import Path
+from datetime import datetime
+root = Path(r"$ROOT")
+out = Path(r"$OUT")
+doc = root / "docs" / "BUILD-VERIFY.md"
+label = r"$LABEL"
+zip_out = r"$ZIP_OUT"
+want_win = True
+want_mac = True  # sh 경로는 보통 Mac 호스트; Windows만이면 수동 수정
+include_legacy = r"${INCLUDE_LEGACY:-1}" == "1"
+version = __import__("json").load(open(r"$VERSION_FILE"))
+built = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+auto_start = "<!-- BUILD-VERIFY:AUTO-START -->"
+auto_end = "<!-- BUILD-VERIFY:AUTO-END -->"
+manual_start = "<!-- BUILD-VERIFY:MANUAL-START -->"
+manual_end = "<!-- BUILD-VERIFY:MANUAL-END -->"
+zip_ok = Path(zip_out).is_file() if zip_out else False
+legacy = "- [x] \`Windows\\Legacy\\\` (SDM/WL/FC) — IncludeLegacy=True" if include_legacy else "- [ ] \`Windows\\Legacy\\\` — IncludeLegacy=False"
+mac = "- [x] \`Mac\\arm64\\\` · \`Mac\\x64\\\` — Mac 빌드 포함"
+auto = f"""{auto_start}
+## 현재 빌드 (자동)
+
+| 항목 | 값 |
+|------|-----|
+| 라벨 | \`{label}\` |
+| 버전 | \`{version.get('version')}\` (build {version.get('build')}) |
+| 빌드 시각 | {built} |
+| 출력 | \`{out}\` |
+| 통합 zip | \`{zip_out}\` |
+| Windows | {want_win} |
+| Mac | {want_mac} |
+| IncludeLegacy | {include_legacy}
+
+### 앱 빌드 결과
+
+| 앱 | 상태 |
+|----|------|
+| (sh 일괄) | ok |
+
+### 산출물 빠른 확인 (자동 힌트)
+
+- {'[x]' if zip_ok else '[ ]'} 통합 zip 경로가 \`LATEST.txt\` / 위 표와 일치
+- [x] \`Windows\\BroadcastNasBridge-Windows-x64\` 존재 예상
+{legacy}
+{mac}
+{auto_end}"""
+header = """# 빌드 확인 체크리스트
+
+최신 스위트 빌드 후 **직접 확인해야 할 항목**을 모은 문서입니다.  
+\`Build-BroadcastApps.ps1\` / \`.sh\` 실행 시 **「현재 빌드(자동)」** 구역이 갱신되고, 동일 내용이 \`Builded\\BUILD-VERIFY.md\`에도 복사됩니다.
+
+- 배포 설치 절차: [DEPLOY-CHECKLIST.md](DEPLOY-CHECKLIST.md)
+- 변경 기록: [CHANGES.md](../CHANGES.md) · 할 일: [TODO.md](../TODO.md)
+
+체크(\`- [x]\`)는 **실기한 사람이 수동으로** 표시합니다. 자동 구역의 메타·산출물 표만 빌드가 덮어씁니다.
+
+---
+
+"""
+manual_default = f"""{manual_start}
+## 이번 릴리스 실기 (수동)
+
+새 Minor/기능 빌드 후 항목을 추가·정리하세요. 빌드 스크립트는 **이 구역을 지우지 않습니다.**
+
+### Windows
+
+- [ ] Bridge 시작 → http://127.0.0.1:17820 NAS 연결
+- [ ] \`/schedule\` · \`/worklog\` · \`/files\` 카드 진입
+
+### macOS
+
+- [ ] Bridge Launch.command
+- [ ] 중복 마운트 없음
+
+### 상시 스모크
+
+- [ ] Bridge · CtrlOne · ScheduleReader
+{manual_end}
+"""
+text = doc.read_text(encoding="utf-8") if doc.exists() else ""
+manual = manual_default
+if manual_start in text and manual_end in text:
+    i0 = text.index(manual_start)
+    i1 = text.index(manual_end) + len(manual_end)
+    manual = text[i0:i1].rstrip()
+full = header + "\n" + auto + "\n\n---\n\n" + manual + "\n"
+doc.parent.mkdir(parents=True, exist_ok=True)
+doc.write_text(full, encoding="utf-8", newline="\n")
+(out / "BUILD-VERIFY.md").write_text(full, encoding="utf-8", newline="\n")
+print(f"빌드 확인 문서: {doc}")
+print(f"             → {out / 'BUILD-VERIFY.md'}")
+PY
 echo "완료: $ZIP_OUT"
 echo "사용법: Bridge 실행 후 http://127.0.0.1:17820"
+echo "확인 체크리스트: docs/BUILD-VERIFY.md"
 ls -lh "$ZIP_OUT"
 
 if command -v open >/dev/null 2>&1; then

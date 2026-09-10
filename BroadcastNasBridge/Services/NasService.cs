@@ -178,6 +178,8 @@ public sealed class NasService : IDisposable
             catch (Exception ex)
             {
                 _lastError = ex.Message;
+                // Temp/스케줄만 열린 반연결 상태면 일지 루트가 비어 /worklog 가 로그인에 고착됨
+                try { DisconnectUnlocked(); } catch { /* ignore */ }
                 throw;
             }
         }
@@ -185,15 +187,17 @@ public sealed class NasService : IDisposable
 
     public void Disconnect()
     {
-        lock (_gate)
-        {
-            _schedule.Disconnect();
-            _workLogRoot = null;
-            _mediaRoot = null;
-            _tempShare.Disconnect();
-            _permanentShare.Disconnect();
-            _lastError = null;
-        }
+        lock (_gate) DisconnectUnlocked();
+    }
+
+    private void DisconnectUnlocked()
+    {
+        _schedule.Disconnect();
+        _workLogRoot = null;
+        _mediaRoot = null;
+        _tempShare.Disconnect();
+        _permanentShare.Disconnect();
+        _lastError = null;
     }
 
     public void EnsureConnected()
@@ -201,9 +205,35 @@ public sealed class NasService : IDisposable
         lock (_gate)
         {
             if (_tempShare.IsConnected && _schedule.IsConnected)
+            {
+                EnsureWorkLogRootUnlocked();
                 return;
+            }
             Connect();
         }
+    }
+
+    /// <summary>Temp 공유는 살아 있는데 일지 루트만 비어 있는 경우 복구.</summary>
+    public void EnsureWorkLogRoot()
+    {
+        lock (_gate) EnsureWorkLogRootUnlocked();
+    }
+
+    private void EnsureWorkLogRootUnlocked()
+    {
+        if (!string.IsNullOrWhiteSpace(_workLogRoot) && Directory.Exists(_workLogRoot))
+            return;
+        if (!_tempShare.IsConnected || string.IsNullOrWhiteSpace(_tempShare.Root))
+            return;
+
+        var rel = string.IsNullOrWhiteSpace(_config.WorkLogRelativePath)
+            ? "_data/_work_log"
+            : _config.WorkLogRelativePath;
+        var workLogPath = CombineUnder(_tempShare.Root!, rel);
+        EnsureDirectory(workLogPath);
+        EnsureWorkLogLayout(workLogPath);
+        _workLogRoot = workLogPath;
+        StartupConsole.WriteLine($"일지 루트 복구: {_workLogRoot}");
     }
 
     public void Dispose() => Disconnect();

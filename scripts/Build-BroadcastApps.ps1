@@ -8,7 +8,7 @@
   - 산출 경로: -OutRoot > BROADCAST_BUILD_DIR > broadcast-suite.build.json > <레포>/Builded
   - OS: -Target Host|Windows|Mac|All (설정 파일 targets 와 동일)
   - .NET 앱: self-contained 단일 실행 파일 (호스트에서 해당 RID 게시)
-  - ScheduleReader: Python 휴대 패키지(Windows만, venv는 대상 PC에서 Setup)
+  - ScheduleReader: .NET self-contained 단일 exe (Windows + Mac, 포트 17823)
   - 스위트 버전: broadcast-suite.version.json (빌드마다 build 번호 증가)
   - 개별 portable 폴더 + 개별 zip + 통합 zip:
       <OutRoot>\BroadcastingApp_<version>_<yyyyMMdd>.zip
@@ -52,6 +52,18 @@ param(
     # 레거시 SDM/WL/FC 단독 포터블을 통합 zip Windows\Legacy 에 포함 (기본 on). -IncludeLegacy:$false 로 제외.
     [bool]$IncludeLegacy = $true
 )
+
+# 한글 콘솔: UTF-8 (dotnet "복원할 프로젝트를 확인하는 중..." 깨짐 완화)
+try {
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    if (Get-Command chcp -ErrorAction SilentlyContinue) {
+        chcp 65001 | Out-Null
+    }
+    [Console]::InputEncoding = $utf8
+    [Console]::OutputEncoding = $utf8
+    $OutputEncoding = $utf8
+}
+catch { }
 
 $ErrorActionPreference = 'Stop'
 $ProjectsRoot = Split-Path $PSScriptRoot -Parent
@@ -450,7 +462,7 @@ function New-SuiteBundleZip {
         Write-Utf8NoBom $macMarker @"
 macOS 배포본이 없습니다.
 Mac에서 scripts/Build-BroadcastApps.sh --target macos (또는 -Target Mac) 로 빌드하세요.
-Windows에서도 -Target All 이면 가능한 앱은 크로스 게시합니다 (FileChecker·ScheduleReader 제외).
+Windows에서도 -Target All 이면 가능한 앱은 크로스 게시합니다 (FileChecker 제외).
 
 레이아웃: Mac/arm64/ … Mac/x64/
 시작: BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
@@ -468,7 +480,7 @@ macOS 배포본
 2. 브라우저 http://127.0.0.1:17820 → 일정·일지·파일체크
 
 WorkLog는 형제와 같이 폴더형(Launch-WorkLog.command). .app 은 Legacy/ 에 있을 수 있음.
-FileChecker·ScheduleReader 는 Windows만.
+FileChecker 는 Windows만. ScheduleReader 는 Windows + Mac.
 Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <폴더>
 "@.TrimEnd()
     }
@@ -624,6 +636,138 @@ function New-MacPortableFolder {
         $created += $portable
     }
     return $created
+}
+
+function Update-BuildVerifyDoc {
+    param(
+        [object[]]$BuildResults,
+        [string]$Label,
+        [object]$SuiteInfo,
+        [string]$ZipPath,
+        [datetime]$BuiltAt
+    )
+    $docPath = Join-Path $ProjectsRoot 'docs\BUILD-VERIFY.md'
+    $markerStart = '<!-- BUILD-VERIFY:AUTO-START -->'
+    $markerEnd = '<!-- BUILD-VERIFY:AUTO-END -->'
+    $manualStart = '<!-- BUILD-VERIFY:MANUAL-START -->'
+    $manualEnd = '<!-- BUILD-VERIFY:MANUAL-END -->'
+
+    $appRows = @()
+    foreach ($r in $BuildResults) {
+        $appRows += "| $($r.name) | $($r.status)$(if ($r.error) { " — $($r.error)" }) |"
+    }
+    if ($appRows.Count -eq 0) { $appRows += '| (없음) | — |' }
+
+    $zipOk = $ZipPath -and (Test-Path -LiteralPath $ZipPath)
+    $zipDisplay = if ($ZipPath) { $ZipPath } else { $null }
+    $latestPath = Join-Path $OutRoot 'LATEST.txt'
+    $latestZipNote = $null
+    if (-not $zipDisplay -and (Test-Path -LiteralPath $latestPath)) {
+        $latestMap = @{}
+        Get-Content -LiteralPath $latestPath | ForEach-Object {
+            if ($_ -match '^\s*([^=]+)=(.*)$') { $latestMap[$Matches[1].Trim()] = $Matches[2].Trim() }
+        }
+        if ($latestMap['bundleZip']) {
+            $zipDisplay = $latestMap['bundleZip']
+            $zipOk = Test-Path -LiteralPath $zipDisplay
+            $latestZipNote = '- 참고: 이번 실행은 통합 zip 미생성(`-SkipBundle` 등). 위 zip은 `LATEST.txt` 기준'
+        }
+    }
+    $legacyHint = if ($IncludeLegacy) { '- [x] `Windows\Legacy\` (SDM/WL/FC) — IncludeLegacy=True' } else { '- [ ] `Windows\Legacy\` — IncludeLegacy=False (의도적 제외)' }
+    $macHint = if ($WantMac) { '- [x] `Mac\arm64\` · `Mac\x64\` — Mac 빌드 포함' } else { '- [ ] `Mac\arm64\` · `Mac\x64\` — 이번 빌드는 Windows만 (Host/Windows)' }
+
+    $autoBlock = @"
+$markerStart
+## 현재 빌드 (자동)
+
+| 항목 | 값 |
+|------|-----|
+| 라벨 | ``$Label`` |
+| 버전 | ``$($SuiteInfo.version)`` (build $($SuiteInfo.build)) |
+| 빌드 시각 | $($BuiltAt.ToString('yyyy-MM-dd HH:mm:ss')) |
+| 출력 | ``$OutRoot`` |
+| 통합 zip | $(if ($zipDisplay) { "``$zipDisplay``" } else { '없음' }) |
+| Windows | $WantWindows |
+| Mac | $WantMac |
+| IncludeLegacy | $IncludeLegacy |
+
+### 이번 실행 앱 결과
+
+| 앱 | 상태 |
+|----|------|
+$($appRows -join "`n")
+
+### 산출물 빠른 확인 (자동 힌트)
+
+- $(if ($zipOk) { '[x]' } else { '[ ]' }) 통합 zip 경로가 ``LATEST.txt`` / 위 표와 일치
+$(if ($latestZipNote) { $latestZipNote })
+- $(if ($WantWindows) { '[x]' } else { '[ ]' }) ``Windows\BroadcastNasBridge-Windows-x64`` 존재 예상
+$legacyHint
+$macHint
+$markerEnd
+"@.TrimEnd()
+
+    $manualDefault = @"
+$manualStart
+## 이번 릴리스 실기 (수동)
+
+새 Minor/기능 빌드 후 항목을 추가·정리하세요. 빌드 스크립트는 **이 구역을 지우지 않습니다.**
+
+### Windows
+
+- [ ] Bridge 시작 → http://127.0.0.1:17820 NAS 연결
+- [ ] `/schedule` · `/worklog` · `/files` 카드 진입
+- [ ] Install 바로가기가 브리지로 열림 · Legacy는 ``Windows\Legacy\``
+
+### macOS
+
+- [ ] ``Mac\<arch>\BroadcastNasBridge-macOS-*\Launch-*.command``
+- [ ] 브리지 유도 시 중복 마운트 없음
+
+### 상시 스모크
+
+- [ ] Bridge 탭 종료 후 프로세스 종료
+- [ ] CtrlOne · ScheduleReader 기동
+$manualEnd
+"@.TrimEnd()
+
+    $header = @"
+# 빌드 확인 체크리스트
+
+최신 스위트 빌드 후 **직접 확인해야 할 항목**을 모은 문서입니다.  
+``Build-BroadcastApps.ps1`` / ``.sh`` 실행 시 **「현재 빌드(자동)」** 구역이 갱신되고, 동일 내용이 ``Builded\BUILD-VERIFY.md``에도 복사됩니다.
+
+- 배포 설치 절차: [DEPLOY-CHECKLIST.md](DEPLOY-CHECKLIST.md)
+- 변경 기록: [CHANGES.md](../CHANGES.md) · 할 일: [TODO.md](../TODO.md)
+
+체크(``- [x]``)는 **실기한 사람이 수동으로** 표시합니다. 자동 구역의 메타·산출물 표만 빌드가 덮어씁니다.
+
+---
+
+"@
+
+    $manualBlock = $manualDefault
+    if (Test-Path -LiteralPath $docPath) {
+        $existing = [System.IO.File]::ReadAllText($docPath, [System.Text.UTF8Encoding]::new($false))
+        $m0 = $existing.IndexOf($manualStart)
+        $m1 = $existing.IndexOf($manualEnd)
+        if ($m0 -ge 0 -and $m1 -gt $m0) {
+            $manualBlock = $existing.Substring($m0, $m1 + $manualEnd.Length - $m0).TrimEnd()
+        }
+    }
+
+    $full = ($header.TrimEnd() + "`r`n`r`n" + $autoBlock + "`r`n`r`n---`r`n`r`n" + $manualBlock + "`r`n").Replace("`n", "`r`n")
+    # Normalize accidental double CR
+    while ($full.Contains("`r`r`n")) { $full = $full.Replace("`r`r`n", "`r`n") }
+
+    Ensure-Dir (Split-Path $docPath -Parent)
+    $docText = $full.TrimEnd() + "`r`n"
+    Write-Utf8NoBom $docPath $docText
+
+    $outCopy = Join-Path $OutRoot 'BUILD-VERIFY.md'
+    Write-Utf8NoBom $outCopy $docText
+    Write-Host "빌드 확인 문서: $docPath"
+    Write-Host "             → $outCopy"
 }
 
 function Show-Manifest {
@@ -1000,153 +1144,83 @@ function Build-WorkLog {
     Add-Result -Name 'WorkLog' -Status 'ok' -Portable $portable -Zip $(if ($zipPath -and (Test-Path $zipPath)) { $zipPath } else { $null }) -Git $git
 }
 
-# --- ScheduleReader (Python portable) ---
+# --- ScheduleReader (.NET self-contained) ---
 function Build-ScheduleReader {
     Write-Step 'ScheduleReader'
     $repo = Join-Path $ProjectsRoot 'ScheduleReader'
+    $csproj = Join-Path $repo 'ScheduleReader.csproj'
+    if (-not (Test-Path $csproj)) { throw "ScheduleReader 소스 없음: $csproj" }
     $git = Get-GitInfo $repo
-    if (-not (Test-Path $repo)) { throw "ScheduleReader 소스 없음: $repo" }
-
-    if (-not $WantWindows) {
-        Write-Host '  Windows 패키지만 지원 — 이번 대상 OS에서는 건너뜀' -ForegroundColor Yellow
-        Add-Result -Name 'ScheduleReader' -Status 'ok' -Git $git -Extra @{ skipped = 'windows-only' }
-        return
-    }
-
     $dest = Join-Path $OutRoot 'ScheduleReader'
-    $portable = Join-Path $dest 'ScheduleReader-portable'
-    if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
-    Ensure-Dir $portable
+    Ensure-Dir $dest
+    $portable = $null
+    $zipPath = $null
 
-    $copyDirs = @('schedule_reader', 'config')
-    foreach ($d in $copyDirs) {
-        $src = Join-Path $repo $d
-        if (-not (Test-Path $src)) { throw "필수 폴더 없음: $src" }
-        Copy-Item $src (Join-Path $portable $d) -Recurse -Force
-    }
+    if ($WantWindows) {
+        Stop-IfRunning @('ScheduleReader')
+        $stage = Join-Path $dest '_stage'
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        Ensure-Dir $stage
 
-    Copy-Item (Join-Path $repo 'requirements.txt') (Join-Path $portable 'requirements.txt') -Force
-    Copy-Item (Join-Path $repo 'README.md') (Join-Path $portable 'README.md') -Force -ErrorAction SilentlyContinue
-    $srIcon = Join-Path $repo 'assets\app.ico'
-    if (-not (Test-Path $srIcon)) { $srIcon = Join-Path $ProjectsRoot 'assets\icons\ScheduleReader\app.ico' }
-    if (Test-Path $srIcon) { Copy-Item $srIcon (Join-Path $portable 'app.ico') -Force }
+        Invoke-DotnetPublish -Project $csproj -OutputDir $stage -ExtraProps @{
+            IncludeNativeLibrariesForSelfExtract = 'true'
+        }
 
-    $modelsSrc = Join-Path $repo 'models'
-    if (Test-Path $modelsSrc) {
-        Write-Host '  models/ 폴더 있음 — 레거시 OCR용일 수 있어 패키지에 넣지 않음' -ForegroundColor Yellow
-    }
+        $exe = Join-Path $stage 'ScheduleReader.exe'
+        if (-not (Test-Path $exe)) { throw 'ScheduleReader.exe 없음' }
 
-    Ensure-Dir (Join-Path $portable 'input')
-    Ensure-Dir (Join-Path $portable 'output')
+        $portable = Join-Path $dest 'ScheduleReader-Windows-x64'
+        if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
+        Ensure-Dir $portable
+        Copy-Item $exe (Join-Path $portable 'ScheduleReader.exe') -Force
+        Copy-Item $exe (Join-Path $dest 'ScheduleReader.exe') -Force
 
-    function Write-Utf8File {
-        param(
-            [Parameter(Mandatory = $true)][string]$FilePath,
-            [Parameter(Mandatory = $true)][string]$Content
-        )
+        $serveBat = @'
+@echo off
+chcp 65001 >nul
+cd /d "%~dp0"
+start "" "%~dp0ScheduleReader.exe"
+'@
         $utf8 = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::WriteAllText($FilePath, $Content, $utf8)
-    }
+        [System.IO.File]::WriteAllText((Join-Path $portable 'serve.bat'), $serveBat, $utf8)
+        [System.IO.File]::WriteAllText((Join-Path $dest 'serve.bat'), $serveBat, $utf8)
 
-    $serveBat = @'
-@echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-if not exist ".venv\Scripts\python.exe" (
-  echo [.venv missing] Run Setup-And-Run.bat first.
-  pause
-  exit /b 1
-)
-echo Starting ScheduleReader...
-echo Open http://127.0.0.1:17823 in your browser.
-echo Press Ctrl+C in this window to stop.
-".venv\Scripts\python.exe" -m schedule_reader serve
-if errorlevel 1 (
-  echo.
-  echo Failed to start.
-  pause
-)
-'@
-    Write-Utf8File -FilePath (Join-Path $portable 'serve.bat') -Content $serveBat
-
-    $setupBat = @'
-@echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-echo [ScheduleReader] Preparing venv...
-
-set "PYEXE="
-where py >nul 2>&1
-if not errorlevel 1 (
-  for %%V in (3.14 3.13 3.12 3.11 3) do (
-    if not defined PYEXE (
-      py -%%V -c "import sys" >nul 2>&1
-      if not errorlevel 1 set "PYEXE=py -%%V"
-    )
-  )
-)
-if not defined PYEXE (
-  where python >nul 2>&1
-  if not errorlevel 1 (
-    python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>&1
-    if not errorlevel 1 set "PYEXE=python"
-  )
-)
-if not defined PYEXE (
-  echo Python 3.11+ 를 찾을 수 없습니다.
-  echo Microsoft Store 앱 실행 별칭이 켜져 있으면 끄고, python.org 에서 설치하세요.
-  echo 설치 후 "Add python.exe to PATH" 를 체크하거나 py launcher 를 사용하세요.
-  pause
-  exit /b 1
-)
-
-echo Using: %PYEXE%
-if not exist ".venv\Scripts\python.exe" (
-  %PYEXE% -m venv .venv
-  if errorlevel 1 (
-    echo Failed to create venv.
-    echo Store stub python 이 원인일 수 있습니다. py -3.11 로 다시 시도하세요.
-    pause
-    exit /b 1
-  )
-)
-echo Installing packages...
-".venv\Scripts\python.exe" -m pip install --upgrade pip
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
-if errorlevel 1 (
-  echo pip install failed.
-  pause
-  exit /b 1
-)
-echo.
-echo Ready. Launching serve.bat...
-call "%~dp0serve.bat"
-'@
-    Write-Utf8File -FilePath (Join-Path $portable 'Setup-And-Run.bat') -Content $setupBat
-
-    $readmeDeploy = @'
+        $readmeDeploy = @'
 ScheduleReader 배포 패키지
 ==========================
 
 1. 이 폴더를 대상 PC에 복사
-2. Python 3.11+ 설치 (python.org 권장, PATH 또는 py launcher)
-   - Windows "앱 실행 별칭"의 python.exe 는 끄세요 (Store stub 방지)
-3. Setup-And-Run.bat 실행 (최초 1회: venv + pip)
-4. 이후: serve.bat
-5. 브라우저: http://127.0.0.1:17823
+2. ScheduleReader.exe (또는 serve.bat) 실행
+3. 브라우저: http://127.0.0.1:17823
 
-교회 월간 일정 엑셀(.xlsx)을 불러와 추출한 뒤 schedule-data.json 으로 내보냅니다.
+Python 설치가 필요 없습니다.
+교회 월간 일정 엑셀(.xlsx) → schedule-data.json
 '@
-    Write-Utf8File -FilePath (Join-Path $portable 'README-DEPLOY.txt') -Content $readmeDeploy
+        [System.IO.File]::WriteAllText((Join-Path $portable 'README-DEPLOY.txt'), $readmeDeploy, $utf8)
 
-    $zipPath = $null
-    if (-not $SkipZip) {
-        $zipPath = Join-Path $dest "ScheduleReader-portable-$Stamp.zip"
-        New-ZipFromFolder $portable $zipPath | Out-Null
+        Remove-Item $stage -Recurse -Force
+
+        if (-not $SkipZip) {
+            $zipPath = Join-Path $dest "ScheduleReader-Windows-x64-$Stamp.zip"
+            New-ZipFromFolder $portable $zipPath | Out-Null
+        }
+        Write-Host "완료: $portable\ScheduleReader.exe"
     }
 
-    Write-Host "완료: $portable"
-    Add-Result -Name 'ScheduleReader' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git
+    if ($WantMac) {
+        $macFolders = New-MacPortableFolder -Project $csproj -DestRoot $dest `
+            -FolderPrefix 'ScheduleReader' -BinaryName 'ScheduleReader'
+        if (-not $SkipZip) {
+            foreach ($folder in $macFolders) {
+                $leaf = Split-Path $folder -Leaf
+                New-ZipFromFolder $folder (Join-Path $dest "$leaf-$Stamp.zip") | Out-Null
+            }
+        }
+    }
+
+    Add-Result -Name 'ScheduleReader' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git -Extra @{
+        exe = $(if ($portable) { Join-Path $portable 'ScheduleReader.exe' } else { $null })
+    }
 }
 
 # --- Run ---
@@ -1270,6 +1344,13 @@ builtAt=$($BuildStarted.ToString('o'))
 Write-Step '요약'
 Show-Manifest
 
+try {
+    Update-BuildVerifyDoc -BuildResults $results -Label $SuiteLabel -SuiteInfo $SuiteVersionInfo -ZipPath $BundleZipPath -BuiltAt $BuildStarted
+}
+catch {
+    Write-Host "BUILD-VERIFY.md 갱신 실패: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 $failed = @($results | Where-Object { $_.status -eq 'failed' })
 if ($failed.Count -gt 0) {
     Write-Host ""
@@ -1292,6 +1373,7 @@ Write-Host "  3) 브라우저 http://127.0.0.1:17820"
 Write-Host "  Mac: Mac\<arm64|x64>\BroadcastNasBridge-macOS-*\Launch-BroadcastNasBridge.command"
 Write-Host "  레거시 SDM/WL/FC: Windows\Legacy\ (IncludeLegacy=$IncludeLegacy)"
 Write-Host "  출력 폴더: $OutRoot"
+Write-Host "  확인 체크리스트: docs\BUILD-VERIFY.md (및 Builded\BUILD-VERIFY.md)"
 
 # #111 / #63: 산출 폴더를 탐색기에서 열기
 try {

@@ -355,9 +355,13 @@ public static class AppRouteMapper
                     if (!string.IsNullOrWhiteSpace(body.Password)) cfg.Password = body.Password;
                     nas.Connect(cfg);
                 }
+                else
+                {
+                    nas.EnsureWorkLogRoot();
+                }
                 BindWorkLog(store, nas);
                 if (!store.IsConnected)
-                    return Results.BadRequest(new { message = "작업일지 경로를 열 수 없습니다. 브리지 NAS 설정을 확인하세요." });
+                    return Results.BadRequest(new { message = "작업일지 경로를 열 수 없습니다. 브리지 NAS 설정에서 일지 상대경로를 확인하세요." });
                 return Results.Ok(new { connected = true, root = store.Root, scheduleRoot = store.ScheduleRoot });
             }
             catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
@@ -586,6 +590,7 @@ public static class AppRouteMapper
     private static void BindWorkLog(WorkLogFileStore store, NasService nas)
     {
         if (!nas.IsConnected) return;
+        nas.EnsureWorkLogRoot();
         var wl = nas.WorkLogRoot ?? throw new InvalidOperationException("작업일지 루트 없음");
         if (!Directory.Exists(wl))
             Directory.CreateDirectory(wl);
@@ -748,7 +753,7 @@ async function tryEnterFromBridgeOrLogin() {
         Directory.CreateDirectory(dest);
         var src = Path.Combine(suite, "WorkLog", "www");
         if (!Directory.Exists(src)) return;
-        foreach (var name in new[] { "index.html", "styles.css", "templates.js" })
+        foreach (var name in new[] { "index.html", "styles.css", "templates.js", "demo-boot.js" })
             CopyFile(Path.Combine(src, name), Path.Combine(dest, name));
         var indexPath = Path.Combine(dest, "index.html");
         if (File.Exists(indexPath))

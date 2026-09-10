@@ -22,7 +22,7 @@ $scheduleSrc = Join-Path $Suite 'ScheduleDataManager'
 $scheduleDest = Join-Path $Root 'wwwroot\schedule'
 New-Item -ItemType Directory -Path (Join-Path $scheduleDest 'assets\icons') -Force | Out-Null
 if (Test-Path $scheduleSrc) {
-    foreach ($f in @('index.html', 'styles.css', 'sw.js')) {
+    foreach ($f in @('index.html', 'styles.css', 'sw.js', 'demo-boot.js')) {
         Copy-IfExists (Join-Path $scheduleSrc $f) (Join-Path $scheduleDest $f)
     }
     $appJs = Join-Path $scheduleSrc 'app.js'
@@ -43,7 +43,7 @@ $worklogSrc = Join-Path $Suite 'WorkLog\www'
 $worklogDest = Join-Path $Root 'wwwroot\worklog'
 New-Item -ItemType Directory -Path $worklogDest -Force | Out-Null
 if (Test-Path $worklogSrc) {
-    foreach ($f in @('index.html', 'styles.css', 'templates.js')) {
+    foreach ($f in @('index.html', 'styles.css', 'templates.js', 'demo-boot.js')) {
         Copy-IfExists (Join-Path $worklogSrc $f) (Join-Path $worklogDest $f)
     }
     $indexHtml = Join-Path $worklogDest 'index.html'

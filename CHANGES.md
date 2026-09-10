@@ -3,7 +3,7 @@
 방송실 스위트(CtrlOne, FileChecker, ScheduleDataManager, ScheduleReader, WorkLog)의 **수정·배포 기록**을 남기는 문서입니다.  
 빌드·버전은 `broadcast-suite.version.json` / `Builded\LATEST.txt` 와 맞춰 적습니다.
 
-관련 문서: [PROJECTS.md](PROJECTS.md) · [TODO.md](TODO.md) · 일괄 빌드: `Build-BroadcastApps.bat`
+관련 문서: [PROJECTS.md](PROJECTS.md) · [TODO.md](TODO.md) · 일괄 빌드: `Build-BroadcastApps.bat` · **실기 체크:** [docs/BUILD-VERIFY.md](docs/BUILD-VERIFY.md)
 
 할 일·버그는 **TODO.md**에 적고, 끝난 내용은 여기(CHANGES)에 남긴다.  
 채팅: **「방송실 TODO 해줘」** → TODO 처리 / **「수정 사항 적어줘」** → 이 파일 갱신.
@@ -35,6 +35,137 @@
 ---
 
 ## 기록
+
+## 2026-09-10 — SDM #10·#11 · FC #40·#41 UI
+
+- **스위트:** 빌드 예정
+- **대상:** ScheduleDataManager / FileChecker / BroadcastNasBridge(sync-ui)
+- **유형:** 개선
+
+### 내용
+- SDM: 하단 연결 푸터 슬림화(제목·범례·상세문구 제거, 상태+4버튼, 파일/저장 가로)
+- SDM: 툴바에서 「SCHEDULE BOARD / 일정 보드」 제거, 보기·액션·검색 한 줄
+- FC: 날짜 접기 시 해당 그룹만 토글(전체 rise 애니메이션 제거)
+- FC: 장소·일정제목·강사 한 줄, memo(설명) 미표시
+
+### 확인
+- [ ] `/schedule` · `/files` UI
+- Win / Mac: UI 동일
+
+## 2026-09-10 — ScheduleReader C# 전면 교체
+
+- **스위트:** —
+- **대상:** ScheduleReader / 빌드스크립트
+- **유형:** 기능
+
+### 내용
+- Python FastAPI → ASP.NET Core self-contained exe (포트 17823)
+- Open XML로 표·달력 격자·도형 텍스트 추출
+- `Build-BroadcastApps` / Install 바로가기를 exe 기준으로 변경 (Python Setup 불필요)
+- Win: `ScheduleReader-Windows-x64` / Mac: osx-arm64·x64 게시
+
+### 확인
+- [x] 단위 테스트 (헤더 표·달력)
+- [ ] 실제 교회 월간 엑셀
+- [ ] `Build-BroadcastApps.bat -Apps ScheduleReader`
+
+## 2026-09-10 — WorkLog 배포본 상태창 고착 (`escapeHtml` 중복)
+
+- **스위트:** `—` (wwwroot 핫픽스 가능)
+- **대상:** WorkLog
+- **유형:** 수정
+
+### 내용
+- `app.js`에 `escapeHtml` 이중 선언 → ES 모듈 SyntaxError로 스크립트 미실행 → 상태창 문구에서 멈춤
+- 중복 제거 후 Desktop BNB `wwwroot/worklog` 반영 · 오래된 `.gz`/`.br` 제거
+
+### 확인
+- [ ] 배포 브리지 `/worklog` Ctrl+F5 → 프로필 선택
+- Win / Mac: 동일 (모듈 문법)
+
+## 2026-09-10 — WorkLog 상태창 고착 (demo-boot 404)
+
+- **스위트:** `—`
+- **대상:** WorkLog / BroadcastNasBridge sync-ui
+- **유형:** 수정
+
+### 내용
+- 실사용 `index.html`에서 `demo-boot.js` 상시 로드 제거 (`?demo=1`일만 document.write)
+- API `AbortSignal.timeout(15s)` · boot 예외를 상태창에 표시
+- 데모 시 `apiBase=""` 유지(17822 무응답 대기 방지)
+
+### 확인
+- [ ] `/worklog` Ctrl+F5 후 상태 → 프로필
+- Win / Mac: 동일
+
+## 2026-09-10 — UI 데모 페이지 (NAS 없이 미리보기)
+
+- **스위트:** `—`
+- **대상:** demos / WorkLog / ScheduleDataManager / FileChecker / BroadcastNasBridge / ScheduleReader / 문서
+- **유형:** 기능
+
+### 내용
+- `demos/` 허브 + `Open-UiDemos.bat`/`.sh`/`.command` (정적 서버 17990)
+- 각 앱 `?demo=1` 또는 `demo.html` — fetch mock / 정적 목업으로 NAS·빌드 없이 UI 확인
+- CtrlOne은 기존 `wwwroot/demo.html` 링크
+
+### 확인
+- [ ] `demos\Open-UiDemos.bat` → 허브에서 앱별 화면
+- Win / Mac: 동일 (브라우저 + Python http.server)
+
+## 2026-09-10 — WorkLog 로그인 폼 → 접속 상태창
+
+- **스위트:** `—` (UI sync만; 재배포 시 포함)
+- **대상:** WorkLog / BroadcastNasBridge(`wwwroot/worklog`)
+- **유형:** 개선
+
+### 내용
+- `/worklog` 첫 화면을 NAS 주소·계정 로그인 폼 대신 접속 상태창으로 교체 (프로필 선택·PIN은 유지)
+- 저장 프로필 없으면 프로필 선택 → PIN 설정/확인 후 메인; 있으면 해당 프로필 PIN 확인
+- NAS 미연결 시에만 허브 설정 링크 표시 (WorkLog에서 자격 증명 입력 안 함)
+
+### 확인
+- [ ] `/worklog` 하드 새로고침 후 상태창 → 프로필/메인
+- [ ] NAS 미연결 시 설정 링크로 허브 이동
+- Win: 브리지 호스팅 UI / Mac: 동일(브리지 `/worklog`)
+
+## 2026-09-10 — FC 목록 UX (#125–#128)
+
+- **스위트:** `—` (다음 빌드에 포함)
+- **대상:** FileChecker / BroadcastNasBridge(`/files`)
+- **유형:** 개선
+- **TODO:** `#125` `#126` `#127` `#128`
+
+### 내용
+- 삭제 버튼 제거 · 특송/YouTube O/X → 아이콘
+- 날짜별 접기/펼치기 (localStorage)
+- 기본 필터: 기간 설정 · 일주일 전~오늘
+- 목록에서 설명·시간 미표시 · 장소 표시(None/`미정` → `-`)
+- 스케줄 JSON `place` 필드 동기화 (Win 단독 · 브리지 FilesAppStore)
+
+### Win / Mac
+| 항목 | Windows | macOS |
+|------|---------|-------|
+| UI | `/files`·단독 동일 | 동일 (브리지 sync-ui) |
+| place 동기화 | Recording 가져오기 후 반영 | 동일 |
+
+### 확인
+- [ ] Bridge `/files` — 기본 기간·접기·장소·아이콘 · 삭제 없음
+- [ ] Recording 가져오기 후 장소 라벨
+
+## 2026-09-10 — 빌드 확인 체크리스트 문서
+
+- **스위트:** `1.2.0.15_20260910` (문서만 · 재빌드 없음)
+- **대상:** 문서 / 빌드스크립트
+- **유형:** 문서
+
+### 내용
+- [docs/BUILD-VERIFY.md](docs/BUILD-VERIFY.md) 신설 — 현재 빌드 메타(자동) + 1.2.0 실기 항목(수동)
+- `Build-BroadcastApps.ps1` / `.sh` 종료 시 AUTO 구역 갱신 · `Builded\BUILD-VERIFY.md` 복사 · 수동 구역 유지
+- TODO / CHANGES / PROJECTS / DEPLOY-CHECKLIST 링크
+
+### 확인
+- [ ] 다음 빌드 후 `docs/BUILD-VERIFY.md` 자동 구역 라벨·zip 갱신되는지
 
 ## 2026-09-10 — 스위트 1.2.0 · SDM UI · FC Mac · 빌드 레이아웃
 
