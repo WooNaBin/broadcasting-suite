@@ -476,14 +476,19 @@ macOS 배포본
 ============
 레이아웃: Mac/arm64/ 와 Mac/x64/ (#62)
 
-권장 시작
+권장 설치
+---------
+통합 패키지 루트에서 Install-BroadcastApps.command (또는 .sh) 실행
+→ 설치 폴더 선택 → 바탕화면「방송실 프로그램」바로가기(선택)
+더블클릭 안 되면: chmod +x Install-BroadcastApps.command Install-BroadcastApps.sh
+
+수동 시작
 ---------
 1. 해당 CPU 폴더의 BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
 2. 브라우저 http://127.0.0.1:17820 → 일정·일지·파일체크
 
 WorkLog는 형제와 같이 폴더형(Launch-WorkLog.command). .app 은 Legacy/ 에 있을 수 있음.
-FileChecker 는 Windows만. ScheduleReader 는 Windows + Mac.
-Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <폴더>
+Gatekeeper: 설치 스크립트가 quarantine 제거 시도. 실패 시 우클릭 → 열기 또는 xattr -dr …
 "@.TrimEnd()
     }
 
@@ -510,17 +515,17 @@ $($OkResults | ForEach-Object { "- $($_.name)" } | Out-String)
 - Windows\          … 권장 앱 (Bridge, CtrlOne, ScheduleReader)
 - Windows\Legacy\   … 단독 SDM/WL/FC (브리지 없을 때 폴백, IncludeLegacy=$IncludeLegacy)
 - Mac\arm64\ · Mac\x64\  … CPU별 macOS 포터블
-- Install-BroadcastApps.bat / .ps1
+- Install-BroadcastApps.bat / .ps1   … Windows 설치
+- Install-BroadcastApps.command / .sh … macOS 설치
+- Stop-BroadcastApps.* / Uninstall-BroadcastApps.* … 종료·제거
 - VERSION.txt
 
 빠른 시작 (#63)
 ---------------
 1. zip 압축 해제
-2. Install-BroadcastApps.bat (Windows) 또는
-   Windows\BroadcastNasBridge-Windows-x64\Start-BroadcastNasBridge.bat
+2. Windows: Install-BroadcastApps.bat
+   macOS:   Install-BroadcastApps.command (Finder 더블클릭)
 3. 브라우저 http://127.0.0.1:17820
-
-Mac: Mac\<arch>\BroadcastNasBridge-macOS-*\Launch-BroadcastNasBridge.command
 
 포트: Bridge 17820 (권장) / 레거시 17821·17822·5187 / SR 17823 / CtrlOne 5177
 레거시 정리: docs/LEGACY-CLEANUP.md
@@ -531,24 +536,53 @@ Mac: Mac\<arch>\BroadcastNasBridge-macOS-*\Launch-BroadcastNasBridge.command
 방송실 프로그램 — 사용 방법
 ============================
 
-1) BroadcastNasBridge 실행 (필수 권장)
-2) http://127.0.0.1:17820 에서 NAS 연결
-3) 일정 / 작업일지 / 파일체크 카드로 진입
+Windows
+-------
+1) Install-BroadcastApps.bat 실행 → 설치 폴더·바탕화면 바로가기
+2) 「방송실 프로그램 시작」 또는 Bridge 실행
+3) http://127.0.0.1:17820 에서 NAS 연결 → 일정 / 작업일지 / 파일체크
 
-단독 exe(Legacy)는 브리지가 꺼져 있을 때만 사용하세요.
+macOS
+-----
+1) Install-BroadcastApps.command 실행 → 설치 폴더·바탕화면「방송실 프로그램」
+   (더블클릭이 안 되면 Terminal:
+    chmod +x Install-BroadcastApps.command Install-BroadcastApps.sh
+    ./Install-BroadcastApps.command)
+2) 「방송실 프로그램 시작」 더블클릭
+3) http://127.0.0.1:17820
+
+종료·제거
+-------
+Stop-BroadcastApps.* … 실행 중 프로세스만 종료
+Uninstall-BroadcastApps.* … 프로세스 종료 + 설치 폴더·바탕화면 바로가기 삭제
+
+단독(Legacy)는 브리지가 꺼져 있을 때만 사용하세요.
 브리지가 켜져 있으면 단독 앱도 브리지 URL로만 열립니다.
 "@
     Write-Utf8NoBom (Join-Path $stage 'HOW-TO-START.txt') $howTo.TrimEnd()
 
-    $installerPs1 = Join-Path $PSScriptRoot 'Install-BroadcastApps.ps1'
-    $installerBat = Join-Path $PSScriptRoot 'Install-BroadcastApps.bat'
-    if (-not (Test-Path $installerPs1)) { throw "설치 스크립트 없음: $installerPs1" }
-    if (-not (Test-Path $installerBat)) { throw "설치 스크립트 없음: $installerBat" }
-    $installerText = [System.IO.File]::ReadAllText($installerPs1, [System.Text.UTF8Encoding]::new($false)).TrimStart([char]0xFEFF)
+    $bundleHelpers = @(
+        'Install-BroadcastApps.ps1', 'Install-BroadcastApps.bat',
+        'Install-BroadcastApps.sh', 'Install-BroadcastApps.command',
+        'Stop-BroadcastApps.ps1', 'Stop-BroadcastApps.bat',
+        'Stop-BroadcastApps.sh', 'Stop-BroadcastApps.command',
+        'Uninstall-BroadcastApps.ps1', 'Uninstall-BroadcastApps.bat',
+        'Uninstall-BroadcastApps.sh', 'Uninstall-BroadcastApps.command'
+    )
     $utf8Bom = New-Object System.Text.UTF8Encoding $true
-    [System.IO.File]::WriteAllText((Join-Path $stage 'Install-BroadcastApps.ps1'), $installerText, $utf8Bom)
-    Copy-Item $installerBat (Join-Path $stage 'Install-BroadcastApps.bat') -Force
-    Write-Host "  + Install-BroadcastApps.ps1 / .bat"
+    foreach ($name in $bundleHelpers) {
+        $src = Join-Path $PSScriptRoot $name
+        if (-not (Test-Path $src)) { throw "스위트 도우미 없음: $src" }
+        $dest = Join-Path $stage $name
+        if ($name -like '*.ps1') {
+            $txt = [System.IO.File]::ReadAllText($src, [System.Text.UTF8Encoding]::new($false)).TrimStart([char]0xFEFF)
+            [System.IO.File]::WriteAllText($dest, $txt, $utf8Bom)
+        }
+        else {
+            Copy-Item $src $dest -Force
+        }
+    }
+    Write-Host "  + Install / Stop / Uninstall (Win + Mac)"
     Write-Host "  + HOW-TO-START.txt"
 
     $zipName = "BroadcastingApp_$Label.zip"
@@ -1386,10 +1420,9 @@ if ($BundleZipPath) {
 
 Write-Host ""
 Write-Host "사용법 (#63)" -ForegroundColor Cyan
-Write-Host "  1) zip 압축 해제 후 Install-BroadcastApps.bat (Windows)"
-Write-Host "  2) 또는 Windows\BroadcastNasBridge-Windows-x64\Start-BroadcastNasBridge.bat"
+Write-Host "  1) zip 압축 해제"
+Write-Host "  2) Windows: Install-BroadcastApps.bat · Mac: Install-BroadcastApps.command"
 Write-Host "  3) 브라우저 http://127.0.0.1:17820"
-Write-Host "  Mac: Mac\<arm64|x64>\BroadcastNasBridge-macOS-*\Launch-BroadcastNasBridge.command"
 Write-Host "  레거시 SDM/WL/FC: Windows\Legacy\ (IncludeLegacy=$IncludeLegacy)"
 Write-Host "  출력 폴더: $OutRoot"
 Write-Host "  확인 체크리스트: docs\BUILD-VERIFY.md (및 Builded\BUILD-VERIFY.md)"

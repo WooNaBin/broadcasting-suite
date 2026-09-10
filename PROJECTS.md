@@ -193,10 +193,13 @@ BroadcastingApp_<label>/
   Windows/Legacy/       ← SDM / WorkLog / FileChecker 폴백
   Mac/arm64/ · Mac/x64/
   VERSION.txt · README.txt · HOW-TO-START.txt
-  Install-BroadcastApps.bat / .ps1
+  Install-BroadcastApps.bat / .ps1      ← Windows
+  Install-BroadcastApps.command / .sh   ← macOS
+  Stop-BroadcastApps.* / Uninstall-BroadcastApps.* ← 종료·제거
 ```
 
-설치 시 `Install-BroadcastApps.bat`로 위치를 고르면 **Windows\**(+ Legacy)를 복사한다 (바탕화면 바로가기는 브리지 중심).  
+설치: Windows는 `Install-BroadcastApps.bat`, macOS는 `Install-BroadcastApps.command`로 위치를 고르면 해당 OS 포터블을 복사하고 바탕화면「방송실 프로그램」바로가기를 만들 수 있다.  
+종료·제거: `Stop-BroadcastApps` / `Uninstall-BroadcastApps` (설치 폴더에도 복사됨).  
 ScheduleReader는 **엑셀 추출**용 .NET 단일 exe입니다(Python·OCR 불필요).  
 배포 체크리스트: [docs/DEPLOY-CHECKLIST.md](docs/DEPLOY-CHECKLIST.md) · **빌드별 실기:** [docs/BUILD-VERIFY.md](docs/BUILD-VERIFY.md).
 

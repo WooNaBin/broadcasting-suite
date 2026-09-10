@@ -96,6 +96,16 @@ if (Test-Path $versionSrc) {
     Copy-Item $versionSrc (Join-Path $InstallDir 'VERSION.txt') -Force
 }
 
+foreach ($helper in @(
+        'Stop-BroadcastApps.ps1', 'Stop-BroadcastApps.bat',
+        'Uninstall-BroadcastApps.ps1', 'Uninstall-BroadcastApps.bat'
+    )) {
+    $hs = Join-Path $BundleRoot $helper
+    if (Test-Path $hs) {
+        Copy-Item $hs (Join-Path $InstallDir $helper) -Force
+    }
+}
+
 Write-Host "복사 완료." -ForegroundColor Green
 
 $shortcutAnswer = Read-Host "바탕화면에 바로가기를 만들까요? (Y/N)"

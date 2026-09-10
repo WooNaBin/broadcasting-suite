@@ -9,12 +9,16 @@ BroadcastingApp_<label>\
   Windows\              ← Bridge, CtrlOne, ScheduleReader
   Windows\Legacy\       ← SDM / WorkLog / FileChecker 단독 (폴백)
   Mac\arm64\ · Mac\x64\ ← CPU별
-  Install-BroadcastApps.bat / .ps1
+  Install-BroadcastApps.bat / .ps1      ← Windows 설치
+  Install-BroadcastApps.command / .sh   ← macOS 설치
+  Stop-BroadcastApps.* / Uninstall-BroadcastApps.* ← 종료·제거
   HOW-TO-START.txt · VERSION.txt · README.txt
 ```
 
-- [ ] zip 해제 후 `Install-BroadcastApps.bat`로 설치 폴더 선택 (기본 `%LOCALAPPDATA%\BroadcastingApp`) — **Windows\** (+ Legacy) 복사
-- [ ] 또는 `Windows\` / `Windows\Legacy\` 아래 각 앱 폴더를 직접 실행
+- [ ] **Windows:** zip 해제 후 `Install-BroadcastApps.bat` → 설치 폴더 (기본 `%LOCALAPPDATA%\BroadcastingApp`) · 바탕화면「방송실 프로그램」
+- [ ] **macOS:** zip 해제 후 `Install-BroadcastApps.command` → 설치 폴더 (기본 `~/Applications/BroadcastingApp`) · 바탕화면「방송실 프로그램」
+- [ ] 제거 시 `Stop-BroadcastApps` → `Uninstall-BroadcastApps` (설치 폴더·바로가기)
+- [ ] 또는 `Windows\` / `Mac\<arch>\` 아래 각 앱을 직접 실행
 - [ ] **빌드별 실기 체크:** [BUILD-VERIFY.md](BUILD-VERIFY.md) (매 빌드 자동 갱신)
 ## 공통
 

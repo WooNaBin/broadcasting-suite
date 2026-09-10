@@ -36,6 +36,37 @@
 
 ## 기록
 
+## 2026-09-10 — Potential Issues 수정 · Stop/Uninstall (#1)
+
+- **스위트:** `1.2.1.24_20260910`
+- **대상:** ScheduleDataManager / WorkLog / 빌드스크립트 / 문서
+- **유형:** 수정 | 기능 | 문서
+
+### 내용
+- SDM: 프리셋·명단 NAS 리프레시가 dirty 로컬을 덮어쓰지 않음 · 저장 스냅샷 · 삭제 tombstone으로 409 병합 시 삭제 유지 · 충돌/실패 시 dirty 유지
+- WL: 인쇄 미리보기마다 `print-signs.json` PUT 제거 · 충돌 후 미리보기 갱신 · 마이그레이션 실패 안내
+- `#1` Stop/Uninstall (Win·Mac) 통합 zip·설치 폴더 포함
+
+### 확인
+- [ ] SDM 프리셋/명단 멀티 PC 삭제·저장
+- [ ] WL 인쇄 양식 변경만 NAS 기록
+- [ ] Stop/Uninstall 실기
+
+## 2026-09-10 — Mac 통합 설치 스크립트 (Windows와 동일 흐름)
+
+- **스위트:** `1.2.1.24_20260910`
+- **대상:** 빌드스크립트 / 문서
+- **유형:** 기능 | 문서
+
+### 내용
+- macOS용 `Install-BroadcastApps.command` / `.sh` 추가: `Mac/<arch>` → 설치 폴더 복사, quarantine 제거, 바탕화면「방송실 프로그램」Launch 바로가기
+- 통합 zip에 Win 설치(.bat/.ps1)와 함께 포함 (`Build-BroadcastApps.ps1` / `.sh`)
+- DEPLOY-CHECKLIST · PROJECTS · HOW-TO-START / README 문구 갱신
+
+### 확인
+- [ ] Mac에서 zip 해제 후 `.command` 설치·바로가기
+- [ ] Win 설치 흐름 회귀
+
 ## 2026-09-10 — FC 목록 UX · SDM 월별 강사 표시
 
 - **스위트:** `1.2.0.23_20260910` (메타·브리지 기준)

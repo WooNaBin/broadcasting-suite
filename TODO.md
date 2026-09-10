@@ -42,7 +42,6 @@
 
 ### 공통 / NAS / 동시 실행
 
-- [ ] `#1` `[개선]` `[보통]` `[공통]` 빌드 결과물에 각각 OS별로 프로그램 프로세스를 종료시키는 프로그램과, 설치된 파일과 바로가기를 삭제하는 프로그램 만들기
 - [ ] `#2` `[버그]` `[보통]` `[공통]` 세 앱 동시 실행 + 접속/해제 반복 스모크 테스트 후, 남는 이슈를 이 목록에 추가
   - 메모: 실사용에서 발견한 것만 구체화. (계정 통일 안내는 체크리스트 반영)
   - 보류(2026-09-08): 방송실 NAS·Windows 실기 환경 필요. 코드 변경 없이 실기 후 이슈만 추가.
@@ -119,6 +118,12 @@
 
 ## 완료
 
+- [x] `#1` `[개선]` `[보통]` `[공통]` `[빌드]` Stop / Uninstall (Win·Mac) (2026-09-10)
+  - `Stop-BroadcastApps` · `Uninstall-BroadcastApps` (.bat/.ps1/.command/.sh)
+  - 통합 zip·설치 폴더에 포함 · 프로세스 종료 + 설치 폴더·바탕화면「방송실 프로그램」삭제
+- [x] `#132` `[개선]` `[보통]` `[빌드]` `[공통]` Mac 통합 설치 — `Install-BroadcastApps.command` (2026-09-10)
+  - zip에 `.command`/`.sh` 포함 · `Mac/<arch>` → 설치 폴더 · quarantine 제거 · 바탕화면「방송실 프로그램」바로가기
+  - Win: `.bat`/`.ps1` 기존 유지 · HOW-TO / DEPLOY / PROJECTS 반영
 - [x] `#131` `[개선]` `[보통]` `[SDM]` `[WL]` 명단·인쇄양식 NAS 공유 · 제목규칙 A/B (2026-09-10)
   - SDM `_speaker-roster.json` · WL `print-signs.json`에 `printCardStyle` · 제목규칙 `appendTarget`(기본 A)
 - [x] `#130` `[개선]` `[보통]` `[빌드]` `[공통]` Mac Launch.command Terminal 창 쌓임 방지 (2026-09-10)

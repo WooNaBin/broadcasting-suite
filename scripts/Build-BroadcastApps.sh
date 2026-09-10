@@ -437,21 +437,45 @@ if [[ "$INCLUDE_LEGACY" == "1" ]]; then
   [[ -d "$OUT/WorkLog/WorkLog-macOS-x64.app" ]] && mkdir -p "$BUNDLE_ROOT/Mac/x64/Legacy" && cp -R "$OUT/WorkLog/WorkLog-macOS-x64.app" "$BUNDLE_ROOT/Mac/x64/Legacy/"
 fi
 
-cp "$ROOT/scripts/Install-BroadcastApps.ps1" "$BUNDLE_ROOT/"
-cp "$ROOT/scripts/Install-BroadcastApps.bat" "$BUNDLE_ROOT/"
+for f in Install-BroadcastApps.ps1 Install-BroadcastApps.bat \
+  Install-BroadcastApps.sh Install-BroadcastApps.command \
+  Stop-BroadcastApps.ps1 Stop-BroadcastApps.bat \
+  Stop-BroadcastApps.sh Stop-BroadcastApps.command \
+  Uninstall-BroadcastApps.ps1 Uninstall-BroadcastApps.bat \
+  Uninstall-BroadcastApps.sh Uninstall-BroadcastApps.command; do
+  cp "$ROOT/scripts/$f" "$BUNDLE_ROOT/"
+done
+chmod +x "$BUNDLE_ROOT/"Install-BroadcastApps.sh "$BUNDLE_ROOT/"Install-BroadcastApps.command \
+  "$BUNDLE_ROOT/"Stop-BroadcastApps.sh "$BUNDLE_ROOT/"Stop-BroadcastApps.command \
+  "$BUNDLE_ROOT/"Uninstall-BroadcastApps.sh "$BUNDLE_ROOT/"Uninstall-BroadcastApps.command
 cat > "$BUNDLE_ROOT/HOW-TO-START.txt" <<EOF
-1) BroadcastNasBridge 실행 (권장)
-2) http://127.0.0.1:17820
-3) 일정 / 작업일지 / 파일체크 카드 진입
+Windows
+-------
+1) Install-BroadcastApps.bat → 설치 폴더·바탕화면 바로가기
+2) 「방송실 프로그램 시작」
+3) http://127.0.0.1:17820
+
+macOS
+-----
+1) Install-BroadcastApps.command 실행 → 설치 폴더·바탕화면「방송실 프로그램」
+   (더블클릭이 안 되면 Terminal:
+    chmod +x Install-BroadcastApps.command Install-BroadcastApps.sh
+    ./Install-BroadcastApps.command)
+2) 「방송실 프로그램 시작」
+3) http://127.0.0.1:17820
+
+종료·제거: Stop-BroadcastApps.* / Uninstall-BroadcastApps.*
 EOF
 cat > "$BUNDLE_ROOT/Mac/README.txt" <<EOF
 macOS 배포본
 ============
 레이아웃: Mac/arm64/ · Mac/x64/
 
-권장: BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
+권장 설치: 통합 패키지 루트의 Install-BroadcastApps.command
+  chmod +x Install-BroadcastApps.command Install-BroadcastApps.sh   # 필요 시
+수동: BroadcastNasBridge-macOS-*/Launch-BroadcastNasBridge.command
 WorkLog는 폴더형 Launch-WorkLog.command (.app은 Legacy/)
-Gatekeeper: 우클릭 → 열기 또는 xattr -dr com.apple.quarantine <폴더>
+Gatekeeper: 설치 스크립트가 quarantine 제거 시도
 EOF
 cat > "$BUNDLE_ROOT/VERSION.txt" <<EOF
 BroadcastingApp suite
@@ -477,10 +501,12 @@ cat > "$BUNDLE_ROOT/README.txt" <<EOF
 - Windows\\          … Bridge, CtrlOne, ScheduleReader
 - Windows\\Legacy\\   … SDM / WorkLog / FileChecker 단독
 - Mac\\arm64\\ · Mac\\x64\\
-- Install-BroadcastApps.bat / .ps1
+- Install-BroadcastApps.bat / .ps1   … Windows
+- Install-BroadcastApps.command / .sh … macOS
+- Stop-BroadcastApps.* / Uninstall-BroadcastApps.*
 - HOW-TO-START.txt · VERSION.txt
 
-시작: Bridge → http://127.0.0.1:17820
+시작: 설치 스크립트 → Bridge → http://127.0.0.1:17820
 포트: Bridge 17820 / 레거시 17821·17822·5187 / SR 17823 / CtrlOne 5177
 EOF
 
@@ -586,7 +612,7 @@ print(f"빌드 확인 문서: {doc}")
 print(f"             → {out / 'BUILD-VERIFY.md'}")
 PY
 echo "완료: $ZIP_OUT"
-echo "사용법: Bridge 실행 후 http://127.0.0.1:17820"
+echo "사용법: zip 해제 → Install-BroadcastApps.command (Mac) / .bat (Win) → http://127.0.0.1:17820"
 echo "확인 체크리스트: docs/BUILD-VERIFY.md"
 ls -lh "$ZIP_OUT"
 

@@ -60,6 +60,8 @@
 - [ ] `/schedule` — 달력 빈칸→일정보기 · 토/일 톤 · 월 타이포 · 타이틀 glow · 공유사항 읽기톤 (`#14`–`#19`)
 - [ ] `/schedule` — 일괄 입력 색상 칩 UI (`#20`)
 - [ ] Install 후 바로가기(일정·일지·파일체크)가 브리지로 열림 · Legacy exe는 `Windows\Legacy\` (`#124`)
+- [ ] macOS: `Install-BroadcastApps.command` → 설치 폴더 · 바탕화면「방송실 프로그램」.command
+- [ ] `Stop-BroadcastApps` / `Uninstall-BroadcastApps` (Win·Mac) (`#1`)
 - [ ] zip 안 `HOW-TO-START.txt` · README 레이아웃 안내 (`#63`)
 
 ### macOS (실기 필요)
