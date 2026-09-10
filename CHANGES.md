@@ -38,7 +38,7 @@
 
 ## 2026-09-10 — SDM #10·#11 · FC #40·#41 UI
 
-- **스위트:** 빌드 예정
+- **스위트:** `1.2.0.18_20260910`
 - **대상:** ScheduleDataManager / FileChecker / BroadcastNasBridge(sync-ui)
 - **유형:** 개선
 
