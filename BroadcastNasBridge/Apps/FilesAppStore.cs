@@ -244,6 +244,7 @@ public sealed class FilesAppStore
         if (name.Equals("schedule-presets.json", StringComparison.OrdinalIgnoreCase)) return false;
         if (name.Equals("_speaker-roster.json", StringComparison.OrdinalIgnoreCase)) return false;
         if (name.Equals("speaker-roster.json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (name.Equals("_schedule-colors.json", StringComparison.OrdinalIgnoreCase)) return false;
         return true;
     }
 

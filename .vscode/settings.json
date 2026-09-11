@@ -1,5 +1,7 @@
 {
   "git.autoRepositoryDetection": true,
   "git.repositoryScanMaxDepth": 2,
-  "git.detectSubmodules": true
+  "git.detectSubmodules": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
 }

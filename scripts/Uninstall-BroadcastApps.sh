@@ -16,23 +16,47 @@ if [[ -z "$INSTALL_DIR" ]]; then
   echo ""
   echo "방송실 프로그램 제거"
   echo "===================="
-  echo "기본 설치 위치: $DEFAULT_DIR"
-  picked="$(osascript <<EOF 2>/dev/null || true
+  echo "  [1] 이 삭제 프로그램이 있는 위치: $HERE"
+  echo "  [2] 기본 설치 위치: $DEFAULT_DIR"
+  echo "  [3] 다른 폴더 선택"
+  choice="$(osascript <<EOF 2>/dev/null || true
 try
-  set defaultPath to POSIX file "$DEFAULT_DIR"
-  set chosen to choose folder with prompt "삭제할 설치 폴더를 선택하세요 (취소=기본 위치)" default location defaultPath
+  set r to display dialog "삭제할 설치 폴더를 고르세요." buttons {"기본 위치", "폴더 선택", "이 위치"} default button "이 위치" with title "방송실 프로그램 제거"
+  if button returned of r is "이 위치" then
+    return "1"
+  else if button returned of r is "기본 위치" then
+    return "2"
+  else
+    return "3"
+  end if
+on error
+  return "1"
+end try
+EOF
+)"
+  choice="${choice%$'\r'}"
+  if [[ "$choice" == "2" ]]; then
+    INSTALL_DIR="$DEFAULT_DIR"
+  elif [[ "$choice" == "3" ]]; then
+    picked="$(osascript <<EOF 2>/dev/null || true
+try
+  set defaultPath to POSIX file "$HERE"
+  set chosen to choose folder with prompt "삭제할 설치 폴더를 선택하세요" default location defaultPath
   return POSIX path of chosen
 on error
   return ""
 end try
 EOF
 )"
-  picked="${picked%$'\r'}"
-  picked="${picked%/}"
-  if [[ -n "$picked" ]]; then
-    INSTALL_DIR="$picked"
+    picked="${picked%$'\r'}"
+    picked="${picked%/}"
+    if [[ -n "$picked" ]]; then
+      INSTALL_DIR="$picked"
+    else
+      INSTALL_DIR="$HERE"
+    fi
   else
-    INSTALL_DIR="$DEFAULT_DIR"
+    INSTALL_DIR="$HERE"
   fi
 fi
 INSTALL_DIR="${INSTALL_DIR%/}"

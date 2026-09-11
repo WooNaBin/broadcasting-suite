@@ -61,6 +61,15 @@ INSTALL_DIR="${INSTALL_DIR%/}"
 echo ""
 echo "설치 위치: $INSTALL_DIR"
 echo "원본:      $MAC_SRC"
+
+echo ""
+echo "실행 중인 방송실 프로그램을 종료합니다…"
+if [[ -f "$BUNDLE_ROOT/Stop-BroadcastApps.sh" ]]; then
+  chmod +x "$BUNDLE_ROOT/Stop-BroadcastApps.sh" 2>/dev/null || true
+  bash "$BUNDLE_ROOT/Stop-BroadcastApps.sh" || true
+fi
+sleep 0.7
+
 mkdir -p "$INSTALL_DIR"
 
 echo "복사 중..."

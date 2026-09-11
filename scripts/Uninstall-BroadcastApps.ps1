@@ -28,19 +28,56 @@ else {
     Write-Host "Stop-BroadcastApps.ps1 없음 — 프로세스 종료를 건너뜁니다." -ForegroundColor Yellow
 }
 
-$defaultDir = Join-Path $env:LOCALAPPDATA 'BroadcastingApp'
-if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+function Select-UninstallFolder([string]$ScriptDir, [string]$DefaultPath) {
     Write-Host ""
     Write-Host "방송실 프로그램 제거"
     Write-Host "===================="
-    Write-Host "기본 설치 위치: $defaultDir"
-    $ans = Read-Host "설치 폴더 경로 (Enter=기본, 취소=빈 입력 후 N)"
-    if ([string]::IsNullOrWhiteSpace($ans)) {
-        $InstallDir = $defaultDir
+    Write-Host "  [1] 이 삭제 프로그램이 있는 위치 (설치 폴더): $ScriptDir"
+    Write-Host "  [2] 기본 설치 위치: $DefaultPath"
+    Write-Host "  [3] 다른 폴더 선택"
+    $choice = Read-Host "번호 (Enter=1)"
+    if ([string]::IsNullOrWhiteSpace($choice) -or $choice -eq '1') {
+        return $ScriptDir
     }
-    else {
-        $InstallDir = $ans.Trim().Trim('"')
+    if ($choice -eq '2') {
+        return $DefaultPath
     }
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        [System.Windows.Forms.Application]::EnableVisualStyles()
+        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dlg.Description = '삭제할 설치 폴더를 선택하세요'
+        $dlg.ShowNewFolderButton = $false
+        $start = $ScriptDir
+        if (-not (Test-Path $start)) { $start = $DefaultPath }
+        if (Test-Path $start) { $dlg.SelectedPath = $start }
+        $owner = New-Object System.Windows.Forms.Form
+        $owner.TopMost = $true
+        $owner.ShowInTaskbar = $false
+        $owner.WindowState = 'Minimized'
+        $result = $dlg.ShowDialog($owner)
+        $owner.Dispose()
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK -and -not [string]::IsNullOrWhiteSpace($dlg.SelectedPath)) {
+            return $dlg.SelectedPath
+        }
+    }
+    catch {
+        Write-Host "폴더 창을 열 수 없습니다: $($_.Exception.Message)" -ForegroundColor Yellow
+        $typed = Read-Host "설치 폴더 경로"
+        if (-not [string]::IsNullOrWhiteSpace($typed)) {
+            return $typed.Trim().Trim('"')
+        }
+    }
+    Write-Host "폴더 선택을 취소했습니다. 이 삭제 프로그램 위치를 사용합니다."
+    return $ScriptDir
+}
+
+$defaultDir = Join-Path $env:LOCALAPPDATA 'BroadcastingApp'
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+    $InstallDir = Select-UninstallFolder $here $defaultDir
+}
+else {
+    $InstallDir = $InstallDir.Trim().Trim('"')
 }
 
 Write-Host ""

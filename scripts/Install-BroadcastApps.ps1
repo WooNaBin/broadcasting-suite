@@ -84,6 +84,26 @@ Write-Host ""
 Write-Host "설치 위치: $InstallDir"
 Write-Host "원본:      $WindowsSrc"
 
+$stopPs1 = Join-Path $BundleRoot 'Stop-BroadcastApps.ps1'
+Write-Host ""
+Write-Host "실행 중인 방송실 프로그램을 종료합니다…"
+if (Test-Path -LiteralPath $stopPs1) {
+    & $stopPs1
+}
+else {
+    $names = @(
+        'BroadcastNasBridge', 'CtrlOne', 'WorkLog',
+        'BroadcastingSchedule', 'ScheduleReader', 'FileCheckerFinder'
+    )
+    foreach ($name in $names) {
+        Get-Process -Name $name -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host ("  종료: {0} (PID {1})" -f $_.ProcessName, $_.Id)
+            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+Start-Sleep -Milliseconds 700
+
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
