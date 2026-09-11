@@ -10,33 +10,38 @@
 
 ---
 
-
 <!-- BUILD-VERIFY:AUTO-START -->
 ## 현재 빌드 (자동)
 
 | 항목 | 값 |
 |------|-----|
-| 라벨 | `1.2.1.27_20260910` |
-| 버전 | `1.2.1` (build 27) |
-| 빌드 시각 | 2026-09-10 21:28:42 |
-| 출력 | `/Users/wonbin/Desktop/MaribinStudio/BroadcastingApp/Builded` |
-| 통합 zip | `/Users/wonbin/Desktop/MaribinStudio/BroadcastingApp/Builded/BroadcastingApp_1.2.1.27_20260910.zip` |
+| 라벨 | `1.2.4.33_20260911` |
+| 버전 | `1.2.4` (build 33) |
+| 빌드 시각 | 2026-09-11 10:43:21 |
+| 출력 | `D:\Projects\Builded` |
+| 통합 zip | `D:\Projects\Builded\BroadcastingApp_1.2.4.33_20260911.zip` |
 | Windows | True |
-| Mac | True |
-| IncludeLegacy | True
+| Mac | False |
+| IncludeLegacy | True |
 
-### 앱 빌드 결과
+### 이번 실행 앱 결과
 
 | 앱 | 상태 |
 |----|------|
-| (sh 일괄) | ok |
+| BroadcastNasBridge | ok |
+| CtrlOne | ok |
+| FileChecker | ok |
+| ScheduleDataManager | ok |
+| ScheduleReader | ok |
+| WorkLog | ok |
 
 ### 산출물 빠른 확인 (자동 힌트)
 
 - [x] 통합 zip 경로가 `LATEST.txt` / 위 표와 일치
+
 - [x] `Windows\BroadcastNasBridge-Windows-x64` 존재 예상
 - [x] `Windows\Legacy\` (SDM/WL/FC) — IncludeLegacy=True
-- [x] `Macrm64\` · `Macd\` — Mac 빌드 포함
+- [ ] `Mac\arm64\` · `Mac\x64\` — 이번 빌드는 Windows만 (Host/Windows)
 <!-- BUILD-VERIFY:AUTO-END -->
 
 ---
@@ -44,13 +49,15 @@
 <!-- BUILD-VERIFY:MANUAL-START -->
 ## 이번 릴리스 실기 (수동)
 
-`1.2.0` 기준. 새 Minor/기능 빌드 후 항목을 추가·정리하세요. 빌드 스크립트는 **이 구역을 지우지 않습니다.**
+`1.2.4.30` 기준. 새 Minor/기능 빌드 후 항목을 추가·정리하세요. 빌드 스크립트는 **이 구역을 지우지 않습니다.**
 
 ### Windows
 
 - [ ] Bridge `Start-BroadcastNasBridge.bat` → http://127.0.0.1:17820 NAS 연결
 - [ ] `/files` — 기간 기본(일주일~오늘) · 날짜 접기 · 장소·특송/YT 아이콘 · 삭제 버튼 없음 (`#125`–`#128`)
 - [ ] `/worklog` — NAS 연결 후 로그인(설정)에 멈추지 않고 프로필/메인 진입 (일지 루트 복구)
+- [ ] `/worklog` — 저장을「작성 중…」자리에 · 삭제는 작성/수정 줄 오른쪽 · 작성 중 삭제 숨김
+- [ ] `demos\Open-UiDemos.bat` — SDM/WL/FC 로그인 없이 메인 (`?demo=1`)
 - [ ] `/schedule` — 헤더 슬림·연결 푸터·경로 ellipsis(클릭 시 전체 경로) (`#10` `#11` `#13` `#17`)
 - [ ] `/schedule` — 달력 빈칸→일정보기 · 토/일 톤 · 월 타이포 · 타이틀 glow · 공유사항 읽기톤 (`#14`–`#19`)
 - [ ] `/schedule` — 일괄 입력 색상 칩 UI (`#20`)

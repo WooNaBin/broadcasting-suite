@@ -1,0 +1,27 @@
+---
+description: UI 데모 페이지는 「데모 페이지 업데이트」요청일 때만 수정
+alwaysApply: true
+---
+
+# 데모 페이지 (토큰 절약)
+
+레이아웃·디자인·기능 작업 때는 **데모 파일을 함께 고치지 않는다.**  
+데모는 배포와 **같은** `index.html` / `app.js` / `styles.css` 에 `?demo=1` + `demo-boot.js`(더미 데이터)만 얹는다.
+
+## 손대지 말 것 (일상 작업)
+
+- `**/demo-boot.js`
+- `demos/**`
+- `**/demo.html`, `**/setup-demo.html`
+- 실사용 HTML에 있는 `?demo=1` document.write 블록 (동작 중이면 유지)
+
+## 「데모 페이지 업데이트」일 때만
+
+1. 소스 `demo-boot.js`의 더미 JSON·API mock을 **현재 앱 API/필드**에 맞춘다.
+2. 로그인은 건너뛰고 **메인 화면**부터 연다 (NAS·프로필·PIN 없음).
+3. 결과는 배포 UI와 동일해야 한다. 별도 스냅샷 HTML을 새로 만들지 않는다.
+4. `sync-ui`가 wwwroot로 복사한다. 브리지 복사본만 고치지 말 것.
+
+## 트리거
+
+「데모 페이지 업데이트」 / 「데모 동기화」 / 「데모 전면 수정」

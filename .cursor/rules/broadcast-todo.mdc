@@ -19,6 +19,7 @@ alwaysApply: true
 | **「방송실 TODO CtrlOne만」** 등 | 해당 앱 태그/섹션만 (`[CO]` `[SDM]` `[WL]` `[FC]` `[SR]` `[공통]` `[빌드]`) |
 | **「방송실 TODO에 적어줘」** / **「이슈 메모해줘」** | 재현·기대 동작을 포함해 `TODO.md` 할 일에 항목 추가 |
 | **「수정 사항 적어줘」** | `CHANGES.md` 갱신 (TODO 완료분 포함) |
+| **「데모 페이지 업데이트」** / **「데모 동기화」** | `demo-boot.js` 더미만 현재 API에 맞춤. 일상 UI 작업에서 데모는 건드리지 않음 (`.cursor/rules/demo-pages.mdc`) |
 
 앱 로컬 TODO(`WorkLog/docs/TODO.md`, `ScheduleReader/TODO.md`, `CtrlOne/할일.md`)만 언급하면 그쪽을 본다.  
 **「방송실」** 이 붙거나 상위 `Projects` 맥락의 일괄 요청이면 **루트 `TODO.md`가 허브**다.

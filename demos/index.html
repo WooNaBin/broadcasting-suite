@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>방송실 UI 데모 (NAS 없음)</title>
+  <title>방송실 UI 데모 (더미 데이터)</title>
   <link rel="stylesheet" href="demo-banner.css" />
   <style>
     :root {
@@ -88,47 +88,46 @@
 <body>
   <div class="ui-demo-banner" role="status">
     <strong>UI 데모 허브</strong>
-    <span>빌드·NAS 없이 현재 소스 UI만 확인</span>
+    <span>더미 데이터 · 로그인 생략 · 배포와 같은 메인 UI</span>
   </div>
   <main>
     <h1>방송실 프로그램 UI 데모</h1>
     <p class="lead">
-      각 링크는 해당 앱 소스의 <code>?demo=1</code> 또는 전용 데모 페이지입니다.
-      API는 브라우저 메모리 목(mock)으로 응답하므로 NAS·브리지가 없어도 됩니다.
+      각 링크는 <strong>배포와 동일한</strong> 앱 페이지입니다.
+      NAS·브리지 통신은 하지 않고, 미리 넣은 더미 데이터로 메인 화면부터 엽니다.
     </p>
     <div class="grid">
       <a class="card" href="../BroadcastNasBridge/wwwroot/demo.html">
         <strong>브리지 허브</strong>
-        <small>앱 카드·상태 배지 레이아웃 (정적 데모)</small>
+        <small>앱 카드 레이아웃 (정적 목업)</small>
       </a>
       <a class="card" href="../ScheduleDataManager/index.html?demo=1">
         <strong>스케줄 (SDM)</strong>
-        <small>로그인 건너뛰기 · 샘플 일정으로 셸 UI</small>
+        <small>로그인 생략 · 더미 일정 보드</small>
       </a>
       <a class="card" href="../WorkLog/www/index.html?demo=1">
         <strong>작업일지 (WorkLog)</strong>
-        <small>상태창 → 프로필/PIN → 메인 에디터</small>
+        <small>상태창·PIN 생략 · 메인 에디터</small>
       </a>
       <a class="card" href="../FileChecker/wwwroot/index.html?demo=1">
         <strong>파일체크 (FileChecker)</strong>
-        <small>샘플 스케줄 목록·필터·설정 모달</small>
+        <small>더미 작업 목록 · 필터·설정</small>
       </a>
       <a class="card" href="../CtrlOne/wwwroot/demo.html">
         <strong>CtrlOne</strong>
-        <small>기존 레이아웃 데모 (가상 HyperDeck)</small>
+        <small>가상 HyperDeck 레이아웃 데모</small>
       </a>
       <a class="card" href="../ScheduleReader/schedule_reader/web/static/demo.html">
         <strong>ScheduleReader</strong>
-        <small>샘플 표·추출 결과 UI (서버 API 없음)</small>
+        <small>샘플 표·추출 결과 UI</small>
       </a>
     </div>
     <div class="note">
       <strong style="color: var(--ink)">실행</strong><br />
       저장소 루트에서 <code>demos\Open-UiDemos.bat</code> (Windows) 또는
-      <code>demos/Open-UiDemos.command</code> / <code>demos/Open-UiDemos.sh</code> (Mac)를 실행하세요.
-      정적 서버(<code>http://127.0.0.1:17990</code>)가 뜨고 이 허브가 열립니다.
-      Windows는 PowerShell 내장 서버, Mac은 Python3를 사용합니다.
-      <code>file://</code> 로 직접 열면 ES 모듈·상대 경로가 깨질 수 있습니다.
+      <code>demos/Open-UiDemos.command</code> / <code>demos/Open-UiDemos.sh</code> (Mac).<br />
+      정적 서버 <code>http://127.0.0.1:17990</code> · 일상 UI 작업 때 데모 파일은 수정하지 않습니다.
+      더미 동기화는 「데모 페이지 업데이트」요청 시에만.
     </div>
   </main>
 </body>
