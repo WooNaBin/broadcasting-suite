@@ -15,11 +15,11 @@
 
 | 항목 | 값 |
 |------|-----|
-| 라벨 | `1.2.5.36_20260911` |
-| 버전 | `1.2.5` (build 36) |
-| 빌드 시각 | 2026-09-11 17:05:10 |
+| 라벨 | `1.2.5.37_20260911` |
+| 버전 | `1.2.5` (build 37) |
+| 빌드 시각 | 2026-09-11 18:19:36 |
 | 출력 | `D:\Projects\Builded` |
-| 통합 zip | `D:\Projects\Builded\BroadcastingApp_1.2.5.36_20260911.zip` |
+| 통합 zip | `D:\Projects\Builded\BroadcastingApp_1.2.5.37_20260911.zip` |
 | Windows | True |
 | Mac | False |
 | IncludeLegacy | True |
