@@ -36,6 +36,60 @@
 
 ## 기록
 
+## 2026-09-13 — SDM 일정 배경색 파스텔 보정 제거
+
+- **스위트:** `—`
+- **대상:** ScheduleDataManager / BroadcastNasBridge
+- **유형:** 수정
+
+### 내용
+- 달력 일정 `--event-bg`를 soft(흰색 혼합 파스텔) 대신 accent(지정·자동 색) 그대로 사용
+- 프리셋 칩용 soft 값은 유지. `sync-ui`로 브리지 wwwroot 반영
+
+### 확인
+- [ ] Win: `/schedule` 달력에서 자동·직접 색이 스와치와 동일
+- [ ] Mac: 동일 (웹 UI)
+
+### Win / Mac
+- Win·Mac 동일 웹 UI. 경로·OS 분기 해당 없음.
+
+## 2026-09-13 — SR JSON 색상 auto · SDM 가져오기 제외 제목
+
+- **스위트:** `—`
+- **대상:** ScheduleReader / ScheduleDataManager
+- **유형:** 기능
+
+### 내용
+- `[SR]` JSON 내보내기 시 `color`·`colorMode` 기본값을 `auto`로 통일 (C#·Python 경로)
+- `[SDM]` 설정 → 자료관리에 **제외 일정제목** 조건 추가 (`or`/`and` 문자열 검사). JSON 덮어쓰기·추가(병합) 시 조건에 맞는 제목은 넣지 않음
+
+### 확인
+- [x] ScheduleReader 단위 테스트 (`dotnet test`, 30 통과)
+- [ ] SDM JSON 가져오기에서 제외 조건 실기
+- [ ] Win / Mac: UI·localStorage 동작 동일 (경로 OS 의존 없음)
+
+## 2026-09-13 — SDM 달력 보기형 UI · 월별 일정 삭제
+
+- **스위트:** —
+- **대상:** ScheduleDataManager
+- **유형:** 개선 | 기능
+
+### 내용
+- 달력 날짜 칸 간격 제거 · 직사각형(라운드 제거)
+- 일정 시간 표시 숨김(시간 순 정렬은 유지)
+- 강사명·제목 말줄임 해제, 일정 많을 때 주 높이 자동 확장(+N 더보기 제거)
+- 칸 hover 외곽선 → 날짜 숫자만 강조
+- 설정 > 자료관리: 월 선택 후 해당 월 일정 일괄 삭제(확인 대화상자)
+
+### 확인
+- [ ] Win: SDM/브리지 달력 보기 · 설정 자료관리
+- [ ] Mac: 동일 UI (브리지 반영 시 `sync-ui`)
+
+### Win / Mac
+- Win·Mac 동일 웹 UI. 소스만 수정, 브리지는 `sync-ui` 후 반영.
+
+---
+
 ## 2026-09-11 — SDM 달력 반투명·날짜선 작업 취소
 
 - **스위트:** —

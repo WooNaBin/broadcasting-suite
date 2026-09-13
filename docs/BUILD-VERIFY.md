@@ -10,33 +10,38 @@
 
 ---
 
-
 <!-- BUILD-VERIFY:AUTO-START -->
 ## 현재 빌드 (자동)
 
 | 항목 | 값 |
 |------|-----|
-| 라벨 | `1.2.5.39_20260911` |
-| 버전 | `1.2.5` (build 39) |
-| 빌드 시각 | 2026-09-11 19:02:49 |
-| 출력 | `/Users/wonbin/Desktop/MaribinStudio/BroadcastingApp/Builded` |
-| 통합 zip | `/Users/wonbin/Desktop/MaribinStudio/BroadcastingApp/Builded/BroadcastingApp_1.2.5.39_20260911.zip` |
+| 라벨 | `1.2.5.40_20260913` |
+| 버전 | `1.2.5` (build 40) |
+| 빌드 시각 | 2026-09-13 09:14:09 |
+| 출력 | `D:\Projects\Builded` |
+| 통합 zip | `D:\Projects\Builded\BroadcastingApp_1.2.5.40_20260913.zip` |
 | Windows | True |
-| Mac | True |
-| IncludeLegacy | True
+| Mac | False |
+| IncludeLegacy | True |
 
-### 앱 빌드 결과
+### 이번 실행 앱 결과
 
 | 앱 | 상태 |
 |----|------|
-| (sh 일괄) | ok |
+| BroadcastNasBridge | ok |
+| CtrlOne | ok |
+| FileChecker | ok |
+| ScheduleDataManager | ok |
+| ScheduleReader | ok |
+| WorkLog | ok |
 
 ### 산출물 빠른 확인 (자동 힌트)
 
 - [x] 통합 zip 경로가 `LATEST.txt` / 위 표와 일치
+
 - [x] `Windows\BroadcastNasBridge-Windows-x64` 존재 예상
 - [x] `Windows\Legacy\` (SDM/WL/FC) — IncludeLegacy=True
-- [x] `Macrm64\` · `Macd\` — Mac 빌드 포함
+- [ ] `Mac\arm64\` · `Mac\x64\` — 이번 빌드는 Windows만 (Host/Windows)
 <!-- BUILD-VERIFY:AUTO-END -->
 
 ---
