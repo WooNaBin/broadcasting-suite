@@ -608,6 +608,11 @@ function Stop-IfRunning([string[]]$ProcessNames) {
     Start-Sleep -Milliseconds 400
 }
 
+function Stop-DotnetBuildServers {
+    $null = & dotnet build-server shutdown 2>&1
+    Start-Sleep -Milliseconds 600
+}
+
 function Invoke-DotnetPublish {
     param(
         [string]$Project,
@@ -632,7 +637,17 @@ function Invoke-DotnetPublish {
     foreach ($key in $ExtraProps.Keys) {
         $args += "-p:$key=$($ExtraProps[$key])"
     }
-    & dotnet @args | ForEach-Object { Write-Host $_ }
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        $output = & dotnet @args 2>&1
+        $output | ForEach-Object { Write-Host $_ }
+        if ($LASTEXITCODE -eq 0) { return }
+        $text = $output | Out-String
+        if ($attempt -eq 2 -or $text -notmatch 'MSB3713|being used by another process') {
+            break
+        }
+        Write-Host '  dotnet publish 재시도 (AssemblyInfo 파일 잠금)...' -ForegroundColor Yellow
+        Stop-DotnetBuildServers
+    }
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish 실패: $Project ($Runtime)" }
 }
 
@@ -1284,6 +1299,9 @@ Write-Host "앱: $($Apps -join ', ')"
 Write-Host "대상: Windows=$WantWindows  Mac=$WantMac"
 Write-Host ("스위트 버전: {0}  build={1}  label={2}" -f $suite.version, $suite.build, $SuiteLabel)
 Write-Host "날짜 스탬프: $Stamp"
+
+# 이전 빌드·IDE가 남긴 VBCSCompiler 잠금 정리
+Stop-DotnetBuildServers
 
 foreach ($app in $Apps) {
     try {
