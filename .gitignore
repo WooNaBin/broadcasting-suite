@@ -49,6 +49,7 @@ Desktop.ini
 *.user
 *.suo
 .DS_Store
+.vscode/
 
 # local build helpers
 /tools/
