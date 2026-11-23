@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FileCheckerFinder</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="intro"><div><p class="eyebrow">VIDEO DELIVERY CHECKER</p><h1>영상 작업 스케쥴,<br><em>렌더링/업로드 확인</em></h1><p class="subcopy">로컬 작업 폴더와 NAS 업로드 상태를 스케줄별로 확인</p></div><div class="summary"><span id="summary-date"></span><strong id="summary-count">0</strong><span>개의 작업</span></div></section>
+    <section class="toolbar">
+      <div class="toolbar-title-row">
+        <button type="button" class="nav-button toolbar-refresh" data-action="refresh" title="목록 새로고침">↻</button>
+        <div>
+          <span class="section-kicker">WORK SCHEDULE</span>
+          <h2>작업 목록</h2>
+        </div>
+      </div>
+      <div class="toolbar-side">
+        <div class="toolbar-actions">
+          <button type="button" class="nav-button" data-action="schedule">일정 등록</button>
+          <button type="button" class="nav-button" data-action="settings">설정</button>
+        </div>
+        <div class="legend"><span><i class="dot done"></i>확인됨</span><span><i class="dot pending"></i>대기중</span></div>
+      </div>
+    </section>
+    <section class="filters"><label>기간 <select id="period-mode"><option value="range" selected>기간 설정</option><option value="month">월별</option></select></label><label id="month-filter" class="hidden"><input id="filter-month" type="month"></label><label id="range-filter"><input id="filter-from" type="date"> - <input id="filter-to" type="date"></label><label>정렬 <select id="sort-key"><option value="date">날짜</option><option value="place">장소</option><option value="localStatus">로컬 파일</option><option value="nasStatus">NAS 파일</option></select></label><button id="sort-direction" class="sort-button" title="클릭하면 내림차순으로 바꿉니다">↓ 내림차순</button></section>
+    <section id="schedule-list" class="schedule-list" aria-live="polite"></section>
+    <div id="empty-state" class="empty-state hidden"><span>◌</span><h3>등록된 스케줄이 없습니다</h3><p>-</p><button class="primary" data-action="schedule">스케줄 등록하기</button></div>
+  </main>
+  <div id="modal" class="modal hidden"><div class="modal-backdrop" data-action="close"></div><section class="dialog"><button class="close" data-action="close">×</button><div id="modal-content"></div></section></div>
+  <div id="toast" class="toast"></div>
+  <script>
+    (function () {
+      try {
+        if (new URLSearchParams(location.search).get("demo") !== "1") return;
+        var demoSrc = location.pathname.indexOf("/files") === 0 ? "/files/demo-boot.js" : "demo-boot.js";
+        document.write('<script src="' + demoSrc + '"><\/script>');
+      } catch (_) { /* ignore */ }
+    })();
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

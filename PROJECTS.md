@@ -1,11 +1,12 @@
 # Projects — 방송실 도구 모음
 
-상위 폴더(이 **메타 레포** 루트) 아래에 여러 프로그램 소스가 형제 폴더로 있고, 배포 산출물은 `Builded`에 모은다.  
-앱 소스는 각각 별도 GitHub 레포이며, 이 저장소는 문서·TODO·일괄 빌드만 관리한다. → [README.md](README.md)
+이 **모노레포** 루트 아래에 프로그램 소스가 폴더로 있고, 배포 산출물은 `Builded`에 모은다.  
+문서·TODO·일괄 빌드·앱 소스를 한 저장소에서 관리한다. → [README.md](README.md)
 
 | 문서 | 용도 |
 |------|------|
-| [README.md](README.md) | 메타 레포 소개·클론 배치 |
+| [README.md](README.md) | 모노레포 소개·클론 |
+
 | [PROJECTS.md](PROJECTS.md) | 프로젝트 개요·NAS·포트·빌드 |
 | [TODO.md](TODO.md) | **버그·개선 할 일** → 「방송실 TODO 해줘」로 일괄 작업 |
 | [CHANGES.md](CHANGES.md) | 수정·배포 기록 |

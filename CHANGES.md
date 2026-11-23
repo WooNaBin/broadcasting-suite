@@ -36,6 +36,21 @@
 
 ## 기록
 
+## 2026-11-24 — 앱 소스 모노레포 통합
+
+- **스위트:** `—`
+- **대상:** CtrlOne / FileChecker / ScheduleDataManager / ScheduleReader / WorkLog / 문서
+- **유형:** 기타
+
+### 내용
+- 개별 앱 레포 소스를 이 저장소 하위 폴더로 통합
+- 형제 clone 배치 폐기 — `git clone` 한 번으로 전체 소스 확보
+- `.gitignore`에서 앱 폴더 제외 규칙 제거
+
+### 확인
+- [ ] 로컬 폴더 구조·빌드 스크립트 경로
+- [ ] `Build-BroadcastApps.bat` 빌드
+
 ## 2026-09-16 — SDM 공문 연결·이름규칙 / WL 인쇄 칸 1~7
 
 - **스위트:** `—` (재배포 시 브리지 `sync-ui`로 `/schedule` `/worklog` 반영)

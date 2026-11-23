@@ -1,0 +1,12 @@
+bin/
+obj/
+publish/
+demo-preview/
+*.user
+*.suo
+.vs/
+devices.json
+presets.json
+*.exe
+*.pdb
+*.dll

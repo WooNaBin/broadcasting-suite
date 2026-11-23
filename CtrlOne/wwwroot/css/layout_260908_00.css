@@ -1,0 +1,49 @@
+/*
+ * CtrlOne 카드 레이아웃 조절용 변수
+ * ----------------------------------------
+ * A | B | C | D | E
+ * A = 연결/이름/IP
+ * B = 현재 상태 (크게)
+ * C = 저장장치
+ * D = 기능 버튼
+ * E = 순서 버튼
+ *
+ * 수정 방법:
+ *  1) 이 파일의 숫자만 바꾼 뒤 빌드실행.bat
+ *  2) 또는 /layout-editor.html 에서 미리보고 "CSS 복사" → 이 파일에 붙여넣기
+ *
+ * 자세한 설명: 프로젝트 루트 LAYOUT.md
+ */
+
+:root {
+  /* --- 열 폭: minmax(최소, 비율) --- */
+  --col-a-min: 140px;
+  --col-a-fr: 0.9fr;
+
+  --col-b-min: 108px;
+  --col-b-fr: 0.72fr;
+
+  --col-c-min: 200px;
+  --col-c-fr: 1.2fr;
+
+  --col-d-min: 220px;
+  --col-d-fr: 1.45fr;
+
+  --col-e-width: 2.4rem;
+
+  /* --- 카드 간격·여백 --- */
+  --card-gap-row: 0.75rem;
+  --card-gap-col: 0.85rem;
+  --card-padding-y: 0.85rem;
+  --card-padding-x: 0.9rem;
+
+  /* --- B열 상태 배지 --- */
+  --mode-min-height: 4.4rem;
+  --mode-font-size: 1.15rem;
+  --mode-padding-y: 0.7rem;
+  --mode-padding-x: 0.65rem;
+  --mode-radius: 12px;
+
+  /* --- D열 기능 버튼 (한 줄에 몇 개) --- */
+  --transport-cols: 4;
+}

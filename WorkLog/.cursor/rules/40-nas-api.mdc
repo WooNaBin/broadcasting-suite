@@ -1,0 +1,13 @@
+---
+description: Phase2 NAS HTTP API (크로스플랫폼) 규칙
+globs: nas-api/**/*
+alwaysApply: false
+---
+
+# NAS API
+
+- LocalBridge와 **동일한 REST 계약** (`/api/connect`, `/api/file`, `/api/schedule/*`, `/api/audit/*`, `/api/ensure-layout`).
+- `DATA_ROOT` = `_work_log`, `SCHEDULE_ROOT` = 상위 `_data` (기본: DATA_ROOT 부모).
+- Docker 빌드는 저장소 루트에서 `docker build -f nas-api/Dockerfile`.
+- SMB를 직접 쓰지 않고 마운트된 파일시스템을 사용한다.
+- 주석·콘솔 안내 문구는 한글 우선, 공개 API 경로·JSON 키는 기존 영문 유지.

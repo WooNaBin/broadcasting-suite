@@ -1,0 +1,25 @@
+/*
+ * CtrlOne 카드 레이아웃 조절용 변수
+ * layout-editor.html 에서 복사됨 — wwwroot/css/layout.css 에 붙여넣기
+ */
+ :root {
+  --col-a-min: 140px;
+  --col-a-fr: 0.74fr;
+  --col-b-min: 124px;
+  --col-b-fr: 0.60fr;
+  --col-c-min: 200px;
+  --col-c-fr: 1.2fr;
+  --col-d-min: 220px;
+  --col-d-fr: 1.45fr;
+  --col-e-width: 2.4rem;
+  --card-gap-row: 0.75rem;
+  --card-gap-col: 0.85rem;
+  --card-padding-y: 0.85rem;
+  --card-padding-x: 0.9rem;
+  --mode-min-height: 7.0rem;
+  --mode-font-size: 1.80rem;
+  --mode-padding-y: 0.7rem;
+  --mode-padding-x: 0.65rem;
+  --mode-radius: 12px;
+  --transport-cols: 4;
+}

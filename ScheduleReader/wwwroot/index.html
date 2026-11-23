@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ScheduleReader</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <p class="kicker">SCHEDULE READER</p>
+        <h1>일정 엑셀 → 데이터</h1>
+        <p class="lead">
+          교회 일정 엑셀을 불러와 표를 읽고, ScheduleDataManager에서 쓸 수 있는
+          JSON으로 준비합니다.
+        </p>
+      </header>
+
+      <section class="actions" aria-label="작업">
+        <input
+          id="excelInput"
+          type="file"
+          accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          hidden
+        />
+        <button id="btnLoad" type="button" class="button primary">
+          일정 엑셀 불러오기
+        </button>
+        <label class="extract-option" for="chkExcludeHolidays">
+          <input id="chkExcludeHolidays" type="checkbox" />
+          공휴일 제외 추출
+        </label>
+        <button id="btnExtract" type="button" class="button" disabled>
+          일정 추출
+        </button>
+        <button id="btnExport" type="button" class="button soft" disabled>
+          일정 데이터 내보내기
+        </button>
+        <button id="btnWordFilters" type="button" class="button soft">
+          단어 필터 설정
+        </button>
+      </section>
+
+      <section class="status-card">
+        <div class="status-row">
+          <span class="label">파일</span>
+          <strong id="fileLabel">없음</strong>
+        </div>
+        <div class="status-row">
+          <span class="label">시트</span>
+          <select id="sheetSelect" disabled></select>
+        </div>
+        <p id="statusText" class="status-text">엑셀 파일을 불러오세요.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>미리보기</h2>
+          <span id="previewMeta" class="muted"></span>
+        </div>
+        <div id="previewWrap" class="table-wrap">
+          <p class="empty">불러온 시트의 앞부분이 여기에 보입니다.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title">
+            <h2>추출 결과</h2>
+            <button
+              type="button"
+              id="btnViewTabs"
+              class="gear-button"
+              title="보기 탭 설정"
+              aria-label="보기 탭 설정"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.82 14.52a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.24l2.39-.96c.5.39 1.04.71 1.63.94l.36 2.54c.05.24.26.42.5.42h3.8c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.55 1.63-.94l2.39.96c.25.1.54 0 .68-.24l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"
+                />
+              </svg>
+            </button>
+          </div>
+          <span id="resultMeta" class="muted"></span>
+        </div>
+        <ul id="warningList" class="warnings hidden"></ul>
+        <div class="view-tabs hidden" id="viewTabBar" role="tablist" aria-label="추출 결과 보기 탭"></div>
+        <div class="result-toolbar hidden" id="resultToolbar">
+          <p class="muted result-hint">
+            기간·제목만 보입니다. 행을 누르면 필드를 수정할 수 있습니다.
+          </p>
+          <label class="export-exclude-option hidden" id="exportExcludeWrap" for="chkExportExcludeTab">
+            <input id="chkExportExcludeTab" type="checkbox" />
+            아래의 일정들을 내보내기에서 제외
+          </label>
+          <div class="result-toolbar-actions">
+            <button id="btnSplit" type="button" class="button soft">
+              일정 나누기
+            </button>
+            <button id="btnAddRow" type="button" class="button soft">행 추가</button>
+          </div>
+        </div>
+        <div id="resultWrap" class="table-wrap result-edit-wrap">
+          <p class="empty">추출이 성공하면 일정 목록이 표시됩니다.</p>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="wordFilterDialog" class="app-dialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">WORD FILTERS</span>
+          <h2>단어 필터 자동 세팅</h2>
+        </div>
+        <button type="button" id="wordFilterClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <p class="settings-hint">
+        추출 직후 제목에 맞는 조건이면 필드를 채웁니다.
+        <code>or</code> / <code>and</code> / <code>=</code>(정확 일치) 지원.
+        부가정보는 기존 값 뒤에 이어 붙입니다.
+        적용할 항목을 여러 개 체크하면 한 번에 추가됩니다.
+      </p>
+      <div class="filter-add">
+        <input
+          id="filterPattern"
+          type="text"
+          placeholder="제목 조건 (예: =청년회 / 집회and기도)"
+          autocomplete="off"
+        />
+        <div id="filterTargetRows" class="filter-target-rows" aria-label="적용 대상"></div>
+        <button type="button" id="filterAddBtn" class="button soft">추가</button>
+      </div>
+      <ul id="filterRuleList" class="filter-rule-list"></ul>
+      <div class="dialog-actions">
+        <button type="button" id="wordFilterDone" class="button primary">닫기</button>
+      </div>
+    </dialog>
+
+    <dialog id="viewTabDialog" class="app-dialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">VIEW TABS</span>
+          <h2>보기 탭 설정</h2>
+        </div>
+        <button type="button" id="viewTabClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <p class="settings-hint">
+        제목 조건에 맞는 일정만 해당 탭에 보입니다.
+        <code>or</code> / <code>and</code> / <code>=</code>(정확 일치) 지원. 예:
+        <code>=청년회</code> / <code>집회and기도</code> /
+        <code>청년회or회별모임</code>. 추출·내보내기에는 영향 없습니다. 탭 구성:
+        전체 / 기본(다른 탭에 걸린 것 제외) / 추가 탭…
+      </p>
+      <div class="filter-add view-tab-add">
+        <input
+          id="viewTabWord"
+          type="text"
+          placeholder="제목 조건 (예: =청년회 / 집회and기도)"
+          autocomplete="off"
+        />
+        <button type="button" id="viewTabAddBtn" class="button soft">탭 추가</button>
+      </div>
+      <ul id="viewTabList" class="filter-rule-list"></ul>
+      <div class="dialog-actions">
+        <button type="button" id="viewTabDone" class="button primary">닫기</button>
+      </div>
+    </dialog>
+
+    <dialog id="splitDialog" class="app-dialog app-dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">SPLIT SCHEDULE</span>
+          <h2>일정 나누기</h2>
+        </div>
+        <button type="button" id="splitClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <p class="settings-hint">
+        원본과 같은 기간으로 일정을 여러 건 복제합니다. 날짜를 쪼개지 않습니다.
+      </p>
+      <label class="field">
+        <span class="field-label">원본 일정</span>
+        <select id="splitSource"></select>
+      </label>
+      <div id="splitSourceInfo" class="split-source-info" aria-live="polite"></div>
+      <div id="splitRows" class="split-rows"></div>
+      <div class="split-row-actions">
+        <button type="button" id="splitAddRow" class="button soft">복제 행 추가</button>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="splitCancel" class="button soft">취소</button>
+        <button type="button" id="splitConfirm" class="button primary">복제 추가</button>
+      </div>
+    </dialog>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+---
+description: 일정 JSON 스키마와 기간 생성/수정 규칙
+globs: app.js,DataType.cs,**/schedule-data.json
+alwaysApply: false
+---
+
+# Schedule data
+
+- Web `startTime` is HHmm integer (`1030`), 10-minute steps. Do not switch to C# `hour * 10 + minute / 10` in the web JSON.
+- Keep `place` enum string names and `preparation` as an array of flag names.
+- Keep the typo field `preaparationNote`.
+- New range create: one item per date; every item gets `releaseDate` = range end.
+- Edit existing item: update that item only, even if the form is in range mode.
+- `id` is a UUID string. Do not drop `id` from stored objects.
+- JSON auto-pick when multiple files exist: remembered last file → exact `schedule-data.json` / `scheduledata.json` / `schedule.json` → name contains `schedule` → locale-sorted first.
+- Optional `officialDocument`: image file name under `_official_documents/` (e.g. `2026-09-04_주일말씀_abcd1234.jpg`). Link metadata also lives in `_official_documents/links.json`.
+- Optional `color`: schedule color id string (`orange` | `green` | `yellow` | `teal` | `blue` | `coral` | `sage` | `sand` | `slate`). Missing = default `orange`.

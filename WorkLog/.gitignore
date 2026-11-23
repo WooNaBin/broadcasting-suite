@@ -1,0 +1,26 @@
+# Build / publish
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.pdb
+
+publish/LocalBridge/
+publish/WorkLog-portable/
+publish/MacBridge-*/
+publish/WorkLog-macOS-*/
+publish/*.zip
+
+# Local test / reference
+_ref/
+_testdata/
+
+.env
+.env.*
+*.pem
+*.key
+
+Thumbs.db
+Desktop.ini
+.DS_Store

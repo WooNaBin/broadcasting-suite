@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ScheduleReader · UI 데모</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../../../../demos/demo-banner.css" />
+  </head>
+  <body>
+    <div class="ui-demo-banner" role="status">
+      <strong>ScheduleReader 데모</strong>
+      <span>샘플 표만 표시 · 엑셀 업로드/추출 API 없음</span>
+      <a href="../../../../demos/">데모 허브</a>
+    </div>
+    <div class="page">
+      <header class="hero">
+        <p class="kicker">SCHEDULE READER</p>
+        <h1>일정 엑셀 → 데이터</h1>
+        <p class="lead">
+          교회 일정 엑셀을 불러와 표를 읽고, ScheduleDataManager에서 쓸 수 있는
+          JSON으로 준비합니다. (이 페이지는 UI 데모입니다.)
+        </p>
+      </header>
+
+      <section class="actions" aria-label="작업">
+        <button type="button" class="button primary" disabled>일정 엑셀 불러오기</button>
+        <button type="button" class="button" disabled>일정 추출</button>
+        <button type="button" class="button soft" disabled>일정 데이터 내보내기</button>
+      </section>
+
+      <section class="status-card">
+        <div class="status-row">
+          <span class="label">파일</span>
+          <strong>demo-schedule.xlsx</strong>
+        </div>
+        <div class="status-row">
+          <span class="label">시트</span>
+          <select disabled><option>9월</option></select>
+        </div>
+        <p class="status-text">데모: 샘플 미리보기·추출 결과입니다.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>미리보기</h2>
+          <span class="muted">9월 · 표시 4행</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>날짜</td><td>시간</td><td>제목</td><td>장소</td><td>강사</td></tr>
+              <tr><td>9/7</td><td>10:30</td><td>주일 예배</td><td>본당 대강당</td><td>홍길동</td></tr>
+              <tr><td>9/10</td><td>19:30</td><td>수요 찬양</td><td>본당 중강당</td><td></td></tr>
+              <tr><td>9/14</td><td>09:00</td><td>청년 모임</td><td>교육원</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>추출 결과</h2>
+          <span class="muted">3건</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th><th>시간</th><th>제목</th><th>장소</th><th>준비</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2026-09-07</td><td>1030</td><td>주일 예배</td><td>Main_Large</td><td>Recording</td>
+              </tr>
+              <tr>
+                <td>2026-09-10</td><td>1930</td><td>수요 찬양</td><td>Main_Medium</td><td>Praise</td>
+              </tr>
+              <tr>
+                <td>2026-09-14</td><td>900</td><td>청년 모임</td><td>Edu_Large</td><td>OtherDisplay</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

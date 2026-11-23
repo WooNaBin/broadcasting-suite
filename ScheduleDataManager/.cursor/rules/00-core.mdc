@@ -1,0 +1,15 @@
+---
+description: 프로젝트 공통 에이전트 동작. 설정 파일을 읽고 따른다.
+alwaysApply: true
+---
+
+# Core
+
+1. Read `.cursor/agent-settings.md` first. Treat it as the source of truth for agent behavior.
+2. Reply in `response_language` from that file (default: Korean).
+3. If `commit_message_language` / `code_comment_language` is `ko` (and `prefer_plain_korean` is true): write git commit messages and new/changed code comments in plain Korean that is easy to read. Keep code identifiers and existing English API/JSON names unchanged. Do not force English Conventional Commit prefixes.
+4. If `only_requested_work` is true, do not add features, refactors, or docs the user did not ask for — except when the user asks to work from the todo memo (`todo_memo_file` in agent-settings, default `할일.md`): then read that file and do the unchecked `- [ ]` items (or the ones they name). Mark done items `- [x]` or move them under 「끝난 것」.
+5. If `commit_only_when_asked` / `push_only_when_asked` is true, do not git commit or push unless the user explicitly asks.
+6. If `ask_before_large_refactors` is true, stop and ask before rewriting architecture or moving many files.
+7. Keep `preaparationNote` spelling and JSON field names unless the user explicitly wants a breaking change.
+8. Keep the bridge on localhost if that flag is true. Never log credentials. Only persist NAS passwords when `store_nas_credentials_encrypted_when_remembered` is true and the user checks Remember — then store AES-GCM ciphertext only, never plaintext.

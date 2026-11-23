@@ -1,0 +1,13 @@
+---
+description: 바닐라 웹 UI 규칙
+globs: index.html,app.js,styles.css
+alwaysApply: false
+---
+
+# Frontend
+
+- Stay vanilla: `index.html`, `app.js`, `styles.css` only. No React/Vue/build step unless the user asks.
+- Keep Korean UI copy consistent with the existing screens.
+- Escape user text when rendering HTML (`escapeHtml` or equivalent).
+- If `.cursor/agent-settings.md` has `verify_web_ui_in_browser: true`, exercise the changed flow in the browser (not screenshot-only). Also check empty/error states when that flag is true.
+- Local persistence key is `schedule-data-manager`. Do not rename it without an explicit migration request.

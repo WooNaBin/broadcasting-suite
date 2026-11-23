@@ -1,0 +1,14 @@
+services:
+  worklog-api:
+    build:
+      context: ..
+      dockerfile: nas-api/Dockerfile
+    ports:
+      - "17822:17822"
+    environment:
+      DATA_ROOT: /data/_work_log
+      SCHEDULE_ROOT: /data
+      PORT: "17822"
+    volumes:
+      # Adjust host path to your NAS mount
+      - "${WORKLOG_DATA:-./../_testdata}:/data"

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CtrlOne — HyperDeck Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="top-bar">
+      <div class="brand-block">
+        <p class="brand">CtrlOne</p>
+        <p class="brand-sub">HyperDeck 일괄 스위치</p>
+        <div class="top-links">
+          <a href="demo.html">레이아웃 데모</a>
+          <a href="layout-editor.html">레이아웃 조절</a>
+        </div>
+      </div>
+      <div class="batch-actions">
+        <button type="button" id="btn-batch-record" class="btn btn-record">● 일괄 녹화</button>
+        <button type="button" id="btn-batch-stop" class="btn btn-stop">■ 일괄 중지</button>
+        <button type="button" id="btn-add-device" class="btn btn-primary">＋ 장비 추가</button>
+      </div>
+    </header>
+
+    <section class="selection-strip" aria-label="그룹 선택">
+      <p class="strip-label">그룹 제어 대상</p>
+      <div class="selection-list" id="selection-list"></div>
+      <div class="preset-row">
+        <p class="strip-label">그룹 프리셋</p>
+        <div class="preset-toolbar">
+          <button type="button" id="btn-save-preset" class="btn btn-soft">현재 선택 저장</button>
+          <div class="preset-list" id="preset-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <main class="device-grid" id="device-grid" aria-live="polite"></main>
+
+    <section class="log-panel">
+      <div class="log-header">
+        <h2>실시간 로그</h2>
+        <span id="conn-badge" class="badge badge-off">SignalR 연결 중…</span>
+      </div>
+      <pre id="log-view" class="log-view" aria-label="장비 통신 로그"></pre>
+    </section>
+  </div>
+
+  <dialog id="add-dialog" class="modal modal-wide">
+    <div class="modal-form">
+      <h2>네트워크에서 장비 찾기</h2>
+      <p class="modal-help">로컬 네트워크의 HyperDeck(포트 9993)을 검색한 뒤, 추가할 장비를 선택하세요.</p>
+
+      <div class="scan-toolbar">
+        <button type="button" id="btn-scan" class="btn btn-primary">🔍 네트워크 검색</button>
+        <span id="scan-status" class="scan-status">검색 대기</span>
+      </div>
+
+      <div id="scan-subnets" class="scan-subnets"></div>
+      <div id="discover-list" class="discover-list" aria-live="polite">
+        <div class="discover-empty">[네트워크 검색]을 누르면 장비가 여기에 표시됩니다.</div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="add-cancel">취소</button>
+        <button type="button" class="btn btn-primary" id="btn-add-selected" disabled>선택 추가</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="rename-dialog" class="modal">
+    <form method="dialog" id="rename-form" class="modal-form">
+      <h2>이름 변경</h2>
+      <input type="hidden" id="rename-id" />
+      <label>
+        새 이름
+        <input id="rename-name" type="text" required maxlength="64" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="rename-cancel">취소</button>
+        <button type="submit" value="ok" class="btn btn-primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="address-dialog" class="modal">
+    <form method="dialog" id="address-form" class="modal-form">
+      <h2>IP / 주소 변경</h2>
+      <p class="modal-help">연결이 끊긴 장비만 주소를 바꿀 수 있습니다.</p>
+      <input type="hidden" id="address-id" />
+      <label>
+        IP 또는 호스트
+        <input id="address-value" type="text" required maxlength="128" placeholder="192.168.0.10" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="address-cancel">취소</button>
+        <button type="submit" value="ok" class="btn btn-primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="preset-dialog" class="modal">
+    <form method="dialog" id="preset-form" class="modal-form">
+      <h2>프리셋 저장</h2>
+      <p class="modal-help">현재 체크된 장비 목록을 이름으로 저장합니다. 같은 이름이면 덮어씁니다.</p>
+      <label>
+        프리셋 이름
+        <input id="preset-name" type="text" placeholder="Cam A+B" required maxlength="64" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="preset-cancel">취소</button>
+        <button type="submit" value="ok" class="btn btn-primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

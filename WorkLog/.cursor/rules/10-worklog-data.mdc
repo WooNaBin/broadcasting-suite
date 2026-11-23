@@ -1,0 +1,18 @@
+---
+description: 일지·규칙·감사 로그 JSON 스키마와 NAS 경로 규칙
+globs: docs/schema.md,www/templates.js,www/app.js,scripts/**/*.cs,**/defaults.json,**/work-logs/**
+alwaysApply: false
+---
+
+# WorkLog 데이터
+
+- 상세 스키마는 `docs/schema.md` 를 따른다.
+- NAS 일지 루트: `Temp DATA\_data\_work_log`
+- 스케줄 파일은 상위 `_data` 에서 **읽기만**. 일지 앱이 스케줄 JSON을 쓰지 않는다.
+- `defaults.json` v2: `titleRules` (제목 포함 조건 + record + templates), `templateButtons` (템플릿 버튼 추가 문구).
+- v1(`byWeekday` / `byScheduleTitle`)은 로드 시 마이그레이션하고, 저장 시 v2로 쓴다.
+- 기록 플레이스홀더: `{schedule_title}` `{place}` `{place_label}` `{start_time}` `{sermon_speaker}` `{accessory_info}` `{preparation_note}` `{date}`
+- 월별 일지: `work-logs/YYYY-MM.json` — `entries[]` 의 `templates` 는 문자열 배열.
+- 감사 로그 파일은 `audit/YYYY-MM.jsonl` (UI 명칭은「로그」).
+- 프로필 id는 저장용, UI에는 `displayName` 만 표시한다.
+- 파일 저장은 revision(`X-File-Revision` / `X-Expected-Revision`, 409)을 유지한다.

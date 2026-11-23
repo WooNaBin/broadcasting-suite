@@ -1,52 +1,41 @@
-# Broadcasting suite (meta)
+# Broadcasting suite
 
-방송실 프로그램 **묶음**용 메타 저장소입니다.  
-각 앱 소스는 아래 독립 레포에 있고, 여기에는 **문서·TODO·일괄 빌드·버전**만 둡니다.
+방송실 프로그램 **모노레포**입니다.  
+문서·TODO·일괄 빌드·버전과 **앱 소스**를 이 저장소 하나에서 관리합니다.
 
 ## 구성 앱
 
-| 앱 | 역할 | 저장소 |
-|----|------|--------|
-| **BroadcastNasBridge** | NAS 통합 진입 (메타 레포 내) | (이 스위트) |
-| ScheduleDataManager | 스케줄 관리 (NAS) | https://github.com/WooNaBin/schedule-data-manager |
-| WorkLog | 일일 작업 일지 (NAS) | https://github.com/WooNaBin/WorkLog |
-| FileChecker | 렌더링 파일 체크 | https://github.com/WooNaBin/FileChecker |
-| CtrlOne | HyperDeck 제어 | https://github.com/WooNaBin/CtrlOne |
-| ScheduleReader | 일정표 OCR → JSON | https://github.com/WooNaBin/ScheduleReader |
+| 앱 | 역할 | 폴더 |
+|----|------|------|
+| **BroadcastNasBridge** | NAS 통합 진입 (권장) | `BroadcastNasBridge/` |
+| ScheduleDataManager | 스케줄 관리 (NAS) — 레거시 단독 | `ScheduleDataManager/` |
+| WorkLog | 일일 작업 일지 (NAS) — 레거시 단독 | `WorkLog/` |
+| FileChecker | 렌더링 파일 체크 — 레거시 단독 | `FileChecker/` |
+| CtrlOne | HyperDeck 제어 | `CtrlOne/` |
+| ScheduleReader | 일정표 → JSON | `ScheduleReader/` |
 
-## 로컬 폴더 배치 (권장)
+## 클론
 
-이 메타 레포를 클론한 디렉터리에 앱 레포를 **형제 폴더**로 둡니다. 일괄 빌드 스크립트가 그 레이아웃을 가정합니다.
+```powershell
+git clone https://github.com/WooNaBin/broadcasting-suite.git
+cd broadcasting-suite
+```
 
 ```text
-Projects/                          ← 이 메타 레포 (또는 클론 루트)
-  PROJECTS.md
-  TODO.md
-  CHANGES.md
-  Build-BroadcastApps.bat
-  Build-BroadcastApps.command      ← macOS Finder용
-  Configure-BroadcastBuild.command
+broadcasting-suite/
+  PROJECTS.md · TODO.md · CHANGES.md
+  Build-BroadcastApps.bat / .command
   scripts/
-  BroadcastNasBridge/              ← 통합 NAS 브리지 (메타 레포에 포함)
-  CtrlOne/                         ← git clone (별도 레포)
+  BroadcastNasBridge/
+  CtrlOne/
   FileChecker/
   ScheduleDataManager/
   ScheduleReader/
   WorkLog/
-  Builded/                         ← 빌드 산출물 (git 무시)
+  Builded/                 ← 빌드 산출물 (git 무시)
 ```
 
-```powershell
-cd D:\Projects
-git clone https://github.com/WooNaBin/broadcasting-suite.git .
-# 또는 빈 폴더에 클론 후 앱들을 같은 상위에 배치
-
-git clone https://github.com/WooNaBin/CtrlOne.git
-git clone https://github.com/WooNaBin/FileChecker.git
-git clone https://github.com/WooNaBin/schedule-data-manager.git ScheduleDataManager
-git clone https://github.com/WooNaBin/WorkLog.git
-git clone https://github.com/WooNaBin/ScheduleReader.git
-```
+VS Code/Cursor: `BroadcastingApp.code-workspace` 로 폴더 묶음 열기.
 
 ## 문서
 
@@ -79,5 +68,5 @@ git clone https://github.com/WooNaBin/ScheduleReader.git
 
 ## 이 레포에 올리는 것 / 올리지 않는 것
 
-- **포함:** 스위트 문서, TODO, 빌드 스크립트, Cursor 규칙(방송실 TODO), 버전 파일, `broadcast-suite.build.example.json`  
-- **제외:** 각 앱 소스, `Builded\`, `broadcast-suite.build.json`(머신별 경로), 비밀·로컬 설정, ImgToText 등 스위트 밖 폴더  
+- **포함:** 스위트 문서, TODO, 빌드 스크립트, Cursor 규칙, 버전 파일, **각 앱 소스**
+- **제외:** `Builded\`, `broadcast-suite.build.json`(머신별 경로), 비밀·로컬 설정, ImgToText 등 스위트 밖 폴더

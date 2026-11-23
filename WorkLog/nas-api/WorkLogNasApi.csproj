@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>WorkLogNasApi</AssemblyName>
+    <RootNamespace>WorkLogNasApi</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="..\www\**\*" Link="www\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

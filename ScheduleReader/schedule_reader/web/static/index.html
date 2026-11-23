@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ScheduleReader</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <p class="kicker">SCHEDULE READER</p>
+        <h1>일정 엑셀 → 데이터</h1>
+        <p class="lead">
+          교회 일정 엑셀을 불러와 표를 읽고, ScheduleDataManager에서 쓸 수 있는
+          JSON으로 준비합니다. (이미지 OCR 방식은 더 이상 사용하지 않습니다.)
+        </p>
+      </header>
+
+      <section class="actions" aria-label="작업">
+        <input
+          id="excelInput"
+          type="file"
+          accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          hidden
+        />
+        <button id="btnLoad" type="button" class="button primary">
+          일정 엑셀 불러오기
+        </button>
+        <button id="btnExtract" type="button" class="button" disabled>
+          일정 추출
+        </button>
+        <button id="btnExport" type="button" class="button soft" disabled>
+          일정 데이터 내보내기
+        </button>
+      </section>
+
+      <section class="status-card">
+        <div class="status-row">
+          <span class="label">파일</span>
+          <strong id="fileLabel">없음</strong>
+        </div>
+        <div class="status-row">
+          <span class="label">시트</span>
+          <select id="sheetSelect" disabled></select>
+        </div>
+        <p id="statusText" class="status-text">엑셀 파일을 불러오세요.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>미리보기</h2>
+          <span id="previewMeta" class="muted"></span>
+        </div>
+        <div id="previewWrap" class="table-wrap">
+          <p class="empty">불러온 시트의 앞부분이 여기에 보입니다.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>추출 결과</h2>
+          <span id="resultMeta" class="muted"></span>
+        </div>
+        <ul id="warningList" class="warnings hidden"></ul>
+        <div id="resultWrap" class="table-wrap">
+          <p class="empty">추출이 성공하면 일정 목록이 표시됩니다.</p>
+        </div>
+      </section>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

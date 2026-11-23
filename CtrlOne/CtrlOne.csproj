@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CtrlOne</RootNamespace>
+    <AssemblyName>CtrlOne</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <ApplicationIcon Condition="Exists('$(MSBuildProjectDirectory)/assets/app.ico')">assets/app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(RuntimeIdentifier) != '' AND $(RuntimeIdentifier.StartsWith('win'))">
+    <OutputType>WinExe</OutputType>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.11" />
+  </ItemGroup>
+
+  <!-- UI를 바이너리 안에 포함 → wwwroot 폴더 없이 단독 실행 가능 -->
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot/**/*" />
+    <Content Update="wwwroot/**/*" CopyToPublishDirectory="Never" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+  <Target Name="ExportLayoutDemo" AfterTargets="Build">
+    <PropertyGroup>
+      <_DemoDir>$(MSBuildProjectDirectory)/demo-preview</_DemoDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(_DemoDir);$(_DemoDir)/css;$(_DemoDir)/js" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/demo.html" DestinationFiles="$(_DemoDir)/index.html" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/css/app.css" DestinationFiles="$(_DemoDir)/css/app.css" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/css/layout.css" DestinationFiles="$(_DemoDir)/css/layout.css" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/js/demo.js" DestinationFiles="$(_DemoDir)/js/demo.js" />
+    <WriteLinesToFile
+      File="$(_DemoDir)/README.txt"
+      Lines="CtrlOne Layout Demo&#xD;&#xA;&#xD;&#xA;index.html 을 더블클릭하면 가상 장비가 연결된 레이아웃을 확인할 수 있습니다.&#xD;&#xA;실제 HyperDeck 연결은 사용하지 않습니다.&#xD;&#xA;&#xD;&#xA;레이아웃 변수: css/layout.css (설명은 프로젝트 LAYOUT.md)&#xD;&#xA;앱 실행 중: http://127.0.0.1:5177/demo.html , /layout-editor.html"
+      Overwrite="true"
+      Encoding="UTF-8" />
+    <Message Importance="high" Text="Layout demo exported to $(_DemoDir)" />
+  </Target>
+
+  <Target Name="ExportLayoutDemoOnPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_DemoDir>$(PublishDir)demo-preview</_DemoDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(_DemoDir);$(_DemoDir)/css;$(_DemoDir)/js" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/demo.html" DestinationFiles="$(_DemoDir)/index.html" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/css/app.css" DestinationFiles="$(_DemoDir)/css/app.css" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/css/layout.css" DestinationFiles="$(_DemoDir)/css/layout.css" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/js/demo.js" DestinationFiles="$(_DemoDir)/js/demo.js" />
+    <WriteLinesToFile
+      File="$(_DemoDir)/README.txt"
+      Lines="CtrlOne Layout Demo — open index.html. Layout knobs: css/layout.css (see LAYOUT.md)."
+      Overwrite="true"
+      Encoding="UTF-8" />
+  </Target>
+
+</Project>

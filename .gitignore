@@ -1,13 +1,6 @@
-# 방송실 메타 레포 — 앱 소스·빌드 산출물은 추적하지 않음
+# 방송실 모노레포 — 빌드 산출물·비밀·로컬만 제외
 
-# 독립 앱 레포 (각각 자체 .git)
-/CtrlOne/
-/FileChecker/
-/ScheduleDataManager/
-/ScheduleReader/
-/WorkLog/
-
-# 스위트 밖
+# 스위트 밖 (선택 도구)
 /ImgToText/
 
 # 빌드 산출물·임시
@@ -20,7 +13,7 @@ publish/
 **/obj/
 **/.vs/
 
-# Python / 로컬 (앱 레포는 위에서 통째 ignore — Models/Input/Output 과 대소문자 충돌 나는 광역 규칙 금지)
+# Python / 로컬
 **/.venv/
 **/__pycache__/
 **/.pytest_cache/
@@ -55,4 +48,3 @@ Desktop.ini
 
 # 머신별 빌드 산출 경로 (예시는 broadcast-suite.build.example.json)
 /broadcast-suite.build.json
-

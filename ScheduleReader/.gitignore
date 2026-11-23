@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+.cursor/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local data
+input/**
+!input/.gitkeep
+output/**
+!output/.gitkeep
+!output/example-schedule-data.json
+# C# Models/ 와 충돌 — Mac·Windows는 대소문자 무시(core.ignorecase)
+# Python 스키마는 schedule_reader/models.py
+config/grid_presets/*.json
+!config/grid_presets/.gitkeep
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.heic
+!samples/**
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Temp extracts
+_*.js
+_*.txt

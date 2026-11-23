@@ -1,0 +1,21 @@
+# Build / publish outputs
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.pdb
+
+# All packaged/published build artifacts
+publish/
+
+# Secrets / local env
+.env
+.env.*
+*.pem
+*.key
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store

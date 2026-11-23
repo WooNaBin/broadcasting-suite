@@ -1,0 +1,16 @@
+---
+description: WorkLog 공통 에이전트 동작. 설정 파일을 읽고 따른다.
+alwaysApply: true
+---
+
+# Core
+
+1. 작업 전 `.cursor/agent-settings.md` 를 읽고, 그 값을 동작의 기준으로 삼는다.
+2. `response_language` 대로 사용자에게 답한다 (기본: 한국어).
+3. `only_requested_work` 가 true이면 요청하지 않은 기능·리팩터·문서 추가를 하지 않는다.
+4. `commit_only_when_asked` / `push_only_when_asked` 가 true이면 사용자가 명시할 때만 git commit / push 한다.
+5. `ask_before_large_refactors` 가 true이면 아키텍처를 크게 바꾸거나 다수 파일을 옮기기 전에 먼저 묻는다.
+6. 커밋 메시지는 `commit_message_language`(기본 `ko`)에 맞춰 **한글**로 작성한다. 무엇을 왜 바꿨는지 짧게, 본문은 `~반영.`처럼 명사형으로 끝낸다 (`~한다` 금지).
+7. 새로 추가하는 코드 주석은 `code_comment_language`(기본 `ko`)에 맞춰 **한글**로 작성한다. API·JSON 필드명·함수명은 기존 영문 관례를 유지한다.
+8. LocalBridge는 localhost 전용 플래그를 지킨다. 자격 증명을 로그에 남기지 않는다. NAS 비밀번호는「기억」체크 시에만 암호화 저장한다.
+9. 스케줄 JSON의 `preaparationNote` 철자와 일지/스케줄 JSON 필드 호환을 깨지 않는다 (사용자가 breaking change를 원할 때만).

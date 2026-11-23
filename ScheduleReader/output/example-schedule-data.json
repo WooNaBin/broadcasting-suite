@@ -1,0 +1,30 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "scheduleDate": "2026-09-07",
+    "releaseDate": "2026-09-07",
+    "startTime": 1030,
+    "scheduleTitle": "주일말씀",
+    "accessoryInfo": "",
+    "place": "Main_Large",
+    "sermonSpeaker": "홍길동",
+    "preparation": ["Recording", "Streaming"],
+    "preaparationNote": "",
+    "color": "auto",
+    "colorMode": "auto"
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "scheduleDate": "2026-09-10",
+    "releaseDate": "2026-09-10",
+    "startTime": 1930,
+    "scheduleTitle": "수요예배",
+    "accessoryInfo": "",
+    "place": "Main_Large",
+    "sermonSpeaker": "김철수",
+    "preparation": ["Recording"],
+    "preaparationNote": "",
+    "color": "auto",
+    "colorMode": "auto"
+  }
+]

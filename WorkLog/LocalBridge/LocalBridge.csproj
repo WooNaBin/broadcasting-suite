@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>WorkLog</AssemblyName>
+    <Product>WorkLog</Product>
+    <AssemblyTitle>WorkLog</AssemblyTitle>
+    <Description>Church broadcasting work log — NAS shared diary</Description>
+    <!-- 아이콘: 저장소 루트 assets/WorkLog.ico 를 넣으면 exe/작업표시줄에 반영 -->
+    <ApplicationIcon Condition="Exists('..\assets\WorkLog.ico')">..\assets\WorkLog.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\www\index.html" LogicalName="WorkLog.index.html" />
+    <EmbeddedResource Include="..\www\styles.css" LogicalName="WorkLog.styles.css" />
+    <EmbeddedResource Include="..\www\app.js" LogicalName="WorkLog.app.js" />
+    <EmbeddedResource Include="..\www\templates.js" LogicalName="WorkLog.templates.js" />
+  </ItemGroup>
+</Project>

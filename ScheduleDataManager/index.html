@@ -1,0 +1,1698 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Broadcasting Schedule</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("schedule-data-manager-theme") || "garden";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "garden");
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="bridgeOfflineBanner" class="bridge-offline-banner" hidden>
+      <div class="bridge-offline-copy">
+        <strong>Broadcasting Schedule 서버가 꺼져 있습니다</strong>
+        <p>
+          일정 보기·편집은 브라우저에 저장된 데이터로 계속할 수 있습니다. NAS
+          저장·불러오기는 <code>BroadcastingSchedule.exe</code>를 다시 실행한 뒤
+          연결을 확인하세요.
+        </p>
+      </div>
+      <button type="button" id="bridgeRetryButton" class="button primary">
+        서버 다시 확인
+      </button>
+    </div>
+
+    <section id="connectCheckingScreen" class="login-screen" aria-label="접속 중" aria-live="polite">
+      <div class="login-card connect-status-card">
+        <div class="login-brand">
+          <span class="brand-mark">BS</span>
+          <div>
+            <p class="eyebrow">CONNECTING</p>
+            <h1>접속 중</h1>
+            <p class="login-copy">
+              브리지와 NAS 연결을 확인한 뒤 일정 보드로 들어갑니다. 계정은 허브에서
+              이미 연결된 세션을 사용합니다.
+            </p>
+          </div>
+        </div>
+        <div class="conn-status">
+          <div id="connectCheckingBadge" class="conn-badge" data-state="checking">
+            확인 중
+          </div>
+          <p id="connectCheckingMessage" class="conn-message">
+            브리지·NAS 상태를 확인하는 중입니다…
+          </p>
+          <ul id="connectCheckingSteps" class="conn-steps">
+            <li data-step="bridge" class="is-pending">
+              <span class="step-mark"></span>브리지 API
+            </li>
+            <li data-step="nas" class="is-pending">
+              <span class="step-mark"></span>NAS 세션
+            </li>
+            <li data-step="file" class="is-pending">
+              <span class="step-mark"></span>일정 파일
+            </li>
+            <li data-step="ready" class="is-pending">
+              <span class="step-mark"></span>보드 준비
+            </li>
+          </ul>
+          <p id="connectCheckingDetail" class="conn-detail"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="connectFailedScreen" class="login-screen hidden" aria-label="접속 실패">
+      <div class="login-card connect-status-card">
+        <div class="login-brand">
+          <span class="brand-mark">BS</span>
+          <div>
+            <p class="eyebrow">CONNECTION FAILED</p>
+            <h1>접속 실패</h1>
+            <p id="connectFailedLead" class="login-copy">
+              일정 보드로 들어가지 못했습니다. 다시 시도하거나 브리지 NAS 연결을
+              확인해 주세요.
+            </p>
+          </div>
+        </div>
+        <div class="conn-status">
+          <div id="connectFailedBadge" class="conn-badge" data-state="error">실패</div>
+          <p id="connectFailedMessage" class="conn-message">연결을 확인하지 못했습니다.</p>
+          <p id="connectFailedDetail" class="conn-detail"></p>
+        </div>
+        <div class="login-actions connect-failed-actions">
+          <button type="button" id="connectFailedRetry" class="button primary">
+            다시 시도
+          </button>
+          <a
+            id="connectFailedSetupLink"
+            class="button ghost"
+            href="/setup.html?next=/schedule/"
+            >브리지에서 NAS 연결</a
+          >
+          <button type="button" id="connectFailedLocal" class="button ghost">
+            로컬만 사용
+          </button>
+          <button type="button" id="connectFailedLogin" class="button ghost hidden">
+            계정 입력
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="loginScreen" class="login-screen hidden" aria-label="NAS 로그인">
+      <div class="login-card">
+        <div class="login-brand">
+          <span class="brand-mark">BS</span>
+          <div>
+            <p class="eyebrow">NAS ACCESS</p>
+            <h1>Broadcasting Schedule</h1>
+            <p class="login-copy">
+              Broadcasting Schedule를 통해 NAS에 로그인한 뒤 일정 보드를
+              시작합니다. 접속 IP는 이 PC에 저장되며, 계정·비밀번호는
+              <strong>기억하기</strong>를 켠 경우에만 암호화되어 저장됩니다.
+            </p>
+            <p class="login-hint">
+              공유 폴더명은 탐색기에서 <code>\\NAS_IP\</code> 접속 시 보이는
+              <strong>첫 공유 이름</strong>입니다. 하위 폴더는
+              <code>Temp DATA\_data</code>처럼 <code>공유명\하위폴더</code>로
+              입력하세요.
+            </p>
+            <label class="theme-field login-theme-field"
+              >테마
+              <select id="loginThemeSelect" aria-label="페이지 테마">
+                <option value="garden">Garden · 기본 그린</option>
+                <option value="slate">Slate · 쿨 슬레이트</option>
+                <option value="studio">Studio · 다크 스튜디오</option>
+                <option value="ocean">Ocean · 틸 오션</option>
+                <option value="ink">Ink · 모노 잉크</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <form id="loginForm" class="login-form" autocomplete="on">
+          <div class="wide host-picker">
+            <span class="field-label">NAS 주소 *</span>
+            <div class="host-mode-switch" role="tablist" aria-label="NAS 주소 입력 방식">
+              <button
+                type="button"
+                class="host-mode hidden"
+                data-host-mode="saved"
+                role="tab"
+                aria-selected="false"
+                id="hostModeSaved"
+              >
+                기존 연결
+              </button>
+              <button
+                type="button"
+                class="host-mode active"
+                data-host-mode="scan"
+                role="tab"
+                aria-selected="true"
+              >
+                로컬 네트워크 선택
+              </button>
+              <button
+                type="button"
+                class="host-mode"
+                data-host-mode="manual"
+                role="tab"
+                aria-selected="false"
+              >
+                직접 입력
+              </button>
+            </div>
+            <div id="hostSavedPanel" class="hidden">
+              <div class="host-saved-card" aria-readonly="true">
+                <span class="host-saved-label">마지막 저장 주소</span>
+                <strong id="loginSavedHostLabel">-</strong>
+                <span id="loginSavedHostMeta" class="host-saved-meta"
+                  >수정할 수 없습니다. 다른 주소는 네트워크 선택 또는 직접
+                  입력을 이용하세요.</span
+                >
+              </div>
+            </div>
+            <div id="hostScanPanel">
+              <div class="host-scan-toolbar">
+                <button type="button" id="lanScanButton" class="button soft">
+                  네트워크 검색
+                </button>
+                <span id="lanScanState" class="lan-scan-state">검색 전</span>
+              </div>
+              <div
+                id="lanDeviceList"
+                class="lan-device-list"
+                role="listbox"
+                aria-label="로컬 네트워크 장치"
+              >
+                <div class="lan-device-empty">
+                  검색을 누르면 같은 네트워크의 장치를 찾습니다.
+                </div>
+              </div>
+            </div>
+            <div id="hostManualPanel" class="hidden">
+              <input
+                id="loginHost"
+                list="loginHostOptions"
+                placeholder="192.168.0.10"
+                autocomplete="off"
+              />
+              <datalist id="loginHostOptions"></datalist>
+            </div>
+          </div>
+          <label class="login-share-field"
+            ><span class="login-share-heading"
+              ><span>공유 폴더명 *</span
+              ><button
+                type="button"
+                id="loginShareDefaultButton"
+                class="button ghost share-default-button"
+              >
+                기본값
+              </button></span
+            >
+            <input
+              id="loginShare"
+              value="Temp DATA\_data"
+              placeholder="예: Temp DATA\_data"
+              required
+              autocomplete="off"
+            />
+          </label>
+          <label
+            >사용자 계정 *
+            <input
+              id="loginUser"
+              autocomplete="username"
+              required
+            />
+          </label>
+          <label
+            >비밀번호 *
+            <input
+              id="loginPassword"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+          <label class="login-remember check">
+            <input id="loginRemember" type="checkbox" />
+            이 PC에 계정·비밀번호 기억하기 (암호화 저장)
+          </label>
+          <label class="login-remember check">
+            <input id="loginAutoEnter" type="checkbox" disabled />
+            다음 실행 시 바로 연결하고 시작
+          </label>
+          <label class="wide"
+            >공유 데이터 파일
+            <select id="loginFile" disabled>
+              <option value="">연결 시 우선 규칙으로 자동 선택</option>
+            </select>
+          </label>
+          <p class="login-file-hint">
+            우선순위: 최근 사용 파일 →
+            <code>schedule-data.json</code> → 이름에 schedule 포함 → 가나다순 첫
+            파일
+          </p>
+          <p id="loginState" class="nas-state" data-state="idle">
+            연결 대기 중
+          </p>
+          <div class="login-actions">
+            <button type="button" id="loginSkipButton" class="button ghost">
+              로컬만 사용
+            </button>
+            <button type="submit" id="loginEnterButton" class="button primary">
+              연결하고 시작
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div id="appShell" class="app-shell hidden">
+    <header class="topbar">
+      <div class="top-actions top-actions-start">
+        <label class="theme-field"
+          ><span class="theme-field-label">테마</span>
+          <select id="themeSelect" aria-label="페이지 테마">
+            <option value="garden">Garden</option>
+            <option value="slate">Slate</option>
+            <option value="studio">Studio</option>
+            <option value="ocean">Ocean</option>
+            <option value="ink">Ink</option>
+          </select>
+        </label>
+      </div>
+      <div class="top-actions">
+        <span id="syncStatus" class="sync-status" data-state="local"
+          >로컬만 사용 중</span
+        ><button id="importButton" class="button ghost">가져오기</button
+        ><button id="exportButton" class="button primary">JSON 내보내기</button
+        ><input
+          id="fileInput"
+          type="file"
+          accept=".json,application/json"
+          hidden
+        />
+      </div>
+    </header>
+    <main class="shell">
+      <section class="intro">
+        <div class="intro-top">
+          <div class="intro-heading">
+            <p class="eyebrow">SCHEDULE CONTROL CENTER</p>
+            <h1 class="intro-title">
+              <span class="intro-title-stack">
+                <img
+                  class="title-icon"
+                  src="assets/icons/ico_schedule.png"
+                  alt=""
+                  width="88"
+                  height="88"
+                />
+                <span class="intro-title-text">방송실 일정</span>
+              </span>
+            </h1>
+          </div>
+          <div class="notice-row">
+            <button type="button" id="monthlyScheduleButton" class="today-square monthly-square">
+              <img
+                class="today-icon"
+                src="assets/icons/ico_folder.png"
+                alt=""
+                width="28"
+                height="28"
+              />
+              <span id="monthlyScheduleButtonLabel">광주교회<br />월 일정</span>
+            </button>
+            <button type="button" id="todaySchedulesButton" class="today-square">
+              <img
+                class="today-icon"
+                src="assets/icons/ico_schedule.png"
+                alt=""
+                width="28"
+                height="28"
+              />
+              <span>오늘<br />일정</span>
+            </button>
+            <button type="button" id="monthlyOfficialDocsButton" class="today-square monthly-square">
+              <img
+                class="today-icon"
+                src="assets/icons/ico_verified.png"
+                alt=""
+                width="28"
+                height="28"
+              />
+              <span id="monthlyOfficialDocsButtonLabel">이번 달<br />공문</span>
+            </button>
+            <div class="notice-field">
+              <div class="notice-field-head">
+                <label for="sharedNoticeInput">공유사항</label>
+                <span id="sharedNoticeLockState" class="notice-lock-state"></span>
+              </div>
+              <textarea
+                id="sharedNoticeInput"
+                rows="4"
+                readonly
+                placeholder="공지·공유할 내용을 적어 두세요."
+              ></textarea>
+            </div>
+            <div class="notice-actions">
+              <div class="notice-history-nav" role="group" aria-label="공유사항 기록">
+                <button
+                  type="button"
+                  id="sharedNoticeOlderButton"
+                  class="notice-history-button"
+                  aria-label="이전 공유사항"
+                >
+                  &lt;
+                </button>
+                <button
+                  type="button"
+                  id="sharedNoticeNewerButton"
+                  class="notice-history-button"
+                  aria-label="더 최근 공유사항"
+                >
+                  &gt;
+                </button>
+              </div>
+              <button type="button" id="sharedNoticeEditButton" class="notice-edit-button">
+                수정
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="toolbar">
+        <div class="toolbar-top">
+            <div class="view-actions">
+              <div class="view-switch" role="tablist" aria-label="보기 방식">
+                <button
+                  type="button"
+                  class="view-mode"
+                  data-view="list"
+                  role="tab"
+                  aria-selected="false"
+                >
+                  기본 보기
+                </button>
+                <button
+                  type="button"
+                  class="view-mode active"
+                  data-view="calendar"
+                  role="tab"
+                  aria-selected="true"
+                >
+                  달력 보기
+                </button>
+              </div>
+              <button type="button" id="newScheduleButton" class="button dark button-with-icon">
+                <img
+                  class="btn-icon"
+                  src="assets/icons/ico_add_green.png"
+                  alt=""
+                  width="18"
+                  height="18"
+                />
+                일정 추가
+              </button>
+              <button type="button" id="bulkScheduleButton" class="button soft button-with-icon">
+                일괄 입력
+              </button>
+              <button type="button" id="exportSelectToggle" class="view-today button-with-icon">
+                <img
+                  class="btn-icon"
+                  src="assets/icons/ico_folder.png"
+                  alt=""
+                  width="18"
+                  height="18"
+                />
+                일정 선택 (내보내기)
+              </button>
+              <button
+                type="button"
+                id="appSettingsButton"
+                class="view-today icon-only-button"
+                title="설정"
+                aria-label="설정"
+              >
+                <svg
+                  class="gear-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+                  />
+                </svg>
+              </button>
+            </div>
+          <div class="filters">
+            <label class="filter-search"
+              >검색
+              <input
+                id="searchInput"
+                type="search"
+                placeholder="제목, 설명, 강사 검색"
+            /></label>
+            <div id="listRangeFilters" class="list-range-filters hidden">
+              <label
+                >시작
+                <input id="listFromDate" type="date" />
+              </label>
+              <label
+                >종료
+                <input id="listToDate" type="date" />
+              </label>
+              <button type="button" id="listRangeClear" class="button ghost">
+                전체
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="exportSelectBar" class="export-select-bar hidden">
+          <div class="export-select-bar-copy">
+            <strong>일정 선택 모드</strong>
+            <span id="exportSelectCount">0개 선택</span>
+            <span class="export-select-hint"
+              >체크한 일정만 JSON으로 내보내 다른 PC에서 가져올 수 있습니다.</span
+            >
+          </div>
+          <div class="export-select-bar-actions">
+            <button type="button" id="exportSelectAllButton" class="button soft">
+              현재 목록 전체 선택
+            </button>
+            <button type="button" id="exportSelectClearButton" class="button ghost">
+              선택 해제
+            </button>
+            <button
+              type="button"
+              id="exportSelectedButton"
+              class="button primary"
+              disabled
+            >
+              선택된 일정 내보내기
+            </button>
+            <button type="button" id="exportSelectExitButton" class="button ghost">
+              선택 종료
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="content-grid">
+        <div class="board-pane">
+          <div id="scheduleList" class="schedule-list hidden"></div>
+          <div id="calendarView" class="calendar-view">
+            <div class="calendar-nav">
+              <button
+                type="button"
+                id="calendarPrev"
+                class="button ghost"
+                aria-label="이전 달"
+              >
+                ←
+              </button>
+              <div class="calendar-nav-center">
+                <strong id="calendarTitle">2026년 9월</strong>
+                <button type="button" id="calendarToday" class="button soft">
+                  오늘
+                </button>
+              </div>
+              <button
+                type="button"
+                id="calendarNext"
+                class="button ghost"
+                aria-label="다음 달"
+              >
+                →
+              </button>
+            </div>
+            <div class="calendar-view-filters" aria-label="달력 일정 필터">
+              <div id="calendarFilterChips" class="calendar-filter-chips"></div>
+              <button
+                type="button"
+                id="calendarFilterGear"
+                class="calendar-filter-gear"
+                title="달력 필터 설정"
+                aria-label="달력 필터 설정"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div class="calendar-weekdays" aria-hidden="true">
+              <span>일</span><span>월</span><span>화</span><span>수</span
+              ><span>목</span><span>금</span><span>토</span>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </div>
+        </div>
+      </section>
+      <aside class="side-panel connection-footer" aria-label="공유 파일 연결">
+          <div class="connection-footer-body">
+          <div class="connection-footer-main">
+          <div
+            id="connectionStatus"
+            class="connection-status"
+            data-state="idle"
+          >
+            <span class="connection-dot" aria-hidden="true"></span>
+            <div>
+              <strong id="connectionLabel">연결 안 됨</strong>
+              <p id="connectionDetail" class="visually-hidden" hidden>
+                Broadcasting Schedule로 NAS 공유 폴더를 연결하세요.
+              </p>
+            </div>
+          </div>
+          <div class="connection-footer-actions">
+          <button id="connectNasButton" class="button outline">
+            NAS 다시 연결</button
+          ><button id="saveNasButton" class="button soft" disabled>
+            공유 파일에 저장</button
+          ><button id="backupNasButton" class="button outline" disabled>
+            압축 백업</button
+          ><button id="restoreNasButton" class="button soft" disabled>
+            백업에서 복원
+          </button>
+          </div>
+          </div>
+          <div class="nas-status-card">
+            <div class="nas-status-row">
+              <span class="nas-status-label">연결 파일</span>
+              <div id="nasPath" class="nas-path" title="" role="button" tabindex="0">아직 연결된 파일이 없습니다.</div>
+            </div>
+            <div class="nas-status-row">
+              <span class="nas-status-label">저장 상태</span>
+              <div id="saveStatus" class="save-status" data-state="none">
+                저장 기록 없음
+              </div>
+            </div>
+          </div>
+          </div>
+        </aside>
+    </main>
+    </div>
+    <dialog id="scheduleDialog">
+      <form method="dialog" id="scheduleForm" novalidate>
+        <div class="dialog-head">
+          <div>
+            <span class="section-kicker">SCHEDULE ENTRY</span>
+            <h2 id="dialogTitle">새 일정</h2>
+          </div>
+          <div class="dialog-head-actions">
+            <button
+              type="button"
+              id="dialogOfficialDocViewButton"
+              class="button soft dialog-head-doc-btn hidden"
+            >
+              공문 보기
+            </button>
+            <button type="button" id="scheduleCloseButton" class="icon-button" aria-label="닫기">
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="mode-switch">
+          <button type="button" data-mode="single" class="mode active">
+            단일 날짜
+          </button>
+          <button type="button" data-mode="range" class="mode">
+            기간 입력
+          </button>
+          <button type="button" data-mode="bulk" class="mode" id="bulkModeButton">
+            다수 추가
+          </button>
+        </div>
+        <div id="scheduleSinglePanel">
+        <div class="preset-bar">
+          <div class="preset-bar-head">
+            <span class="field-label">반복 스케줄 프리셋</span>
+            <div class="preset-bar-actions">
+              <button type="button" id="presetManageToggle" class="button ghost share-default-button">
+                관리
+              </button>
+              <button type="button" id="presetCreateToggle" class="button ghost share-default-button">
+                프리셋 만들기
+              </button>
+            </div>
+          </div>
+          <p id="presetSyncHint" class="preset-sync-hint muted"></p>
+          <div id="presetList" class="preset-list" role="list"></div>
+          <div id="presetCreatePanel" class="preset-create-panel hidden">
+            <label
+              >프리셋 이름
+              <input
+                id="presetName"
+                type="text"
+                placeholder="예: 주일 예배"
+                autocomplete="off"
+              />
+            </label>
+            <span class="field-label">저장할 항목</span>
+            <div class="preset-field-checks">
+              <label class="check"
+                ><input type="checkbox" data-preset-field="startTime" checked />
+                시간</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="scheduleTitle" checked />
+                제목</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="place" checked />
+                장소</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="sermonSpeaker" checked />
+                강사명</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="accessoryInfo" checked />
+                부가 정보</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="preaparationNote" checked />
+                설명</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="preparation" checked />
+                사전 준비</label
+              >
+              <label class="check"
+                ><input type="checkbox" data-preset-field="color" checked />
+                색상</label
+              >
+            </div>
+            <div class="preset-create-actions">
+              <button type="button" id="presetSaveButton" class="button soft">
+                현재 내용으로 저장
+              </button>
+              <button type="button" id="presetCreateCancel" class="button ghost">
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label>시작 날짜 *<input id="startDate" type="date" /></label
+          ><label id="endDateField" class="hidden"
+            >종료 날짜 *<input id="endDate" type="date" /></label
+          >          <div class="wide time-picker">
+            <span class="field-label">시간</span>
+            <input type="hidden" id="startTime" value="" />
+            <div class="time-picker-row">
+              <button type="button" id="timeUnsetButton" class="choice-chip active">
+                시간 미정
+              </button>
+              <button type="button" id="timeCustomButton" class="choice-chip">
+                시간 설정
+              </button>
+            </div>
+            <div id="timeQuickButtons" class="time-quick-row choice-row"></div>
+            <div id="timeCustomPanel" class="time-custom-panel hidden">
+              <select id="startHour" aria-label="시">
+                <option value="">시</option>
+              </select>
+              <span class="time-picker-sep" aria-hidden="true">:</span>
+              <select id="startMinute" aria-label="분">
+                <option value="">분</option>
+              </select>
+            </div>
+          </div>
+          <div class="wide color-picker">
+            <span class="field-label">색상</span>
+            <input type="hidden" id="scheduleColorMode" value="auto" />
+            <input type="hidden" id="scheduleColor" value="auto" />
+            <div class="color-mode-row" role="group" aria-label="색상 방법">
+              <button type="button" class="choice-chip" data-color-mode="none">
+                없음
+              </button>
+              <button type="button" class="choice-chip active" data-color-mode="auto">
+                자동
+              </button>
+              <button type="button" class="choice-chip" data-color-mode="custom">
+                직접 선택
+              </button>
+            </div>
+            <div id="colorCustomPanel" class="color-custom-panel hidden">
+              <div class="color-picker-row">
+                <div
+                  id="colorSwatches"
+                  class="color-swatches"
+                  role="listbox"
+                  aria-label="일정 색상"
+                ></div>
+                <label class="color-custom-pick" title="원하는 색 직접 선택">
+                  <input
+                    type="color"
+                    id="scheduleColorCustom"
+                    value="#e87542"
+                    aria-label="색상 직접 선택"
+                  />
+                  <span>직접</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="wide place-picker">
+            <span class="field-label">장소</span>
+            <input type="hidden" id="place" value="None" />
+            <div class="choice-group">
+              <span class="choice-group-label">본당</span>
+              <div class="choice-row">
+                <button type="button" class="choice-chip" data-place="Main_Large">
+                  대강당
+                </button>
+                <button type="button" class="choice-chip" data-place="Main_Medium">
+                  중강당
+                </button>
+                <button type="button" class="choice-chip" data-place="Main_Small">
+                  소강당
+                </button>
+              </div>
+            </div>
+            <div class="choice-group">
+              <span class="choice-group-label">교육원</span>
+              <div class="choice-row">
+                <button type="button" class="choice-chip" data-place="Edu_Large">
+                  대강당
+                </button>
+                <button type="button" class="choice-chip" data-place="Edu_Medium">
+                  중강당
+                </button>
+                <button type="button" class="choice-chip" data-place="Edu_Small">
+                  소강당
+                </button>
+                <button type="button" class="choice-chip" data-place="Edu_Nongseon">
+                  농선부실
+                </button>
+                <button type="button" class="choice-chip" data-place="Edu_Siseon">
+                  시선부실
+                </button>
+                <button type="button" class="choice-chip" data-place="Edu_Go2">
+                  고2실
+                </button>
+              </div>
+            </div>
+            <div class="choice-group place-extra">
+              <div class="choice-row">
+                <button type="button" class="choice-chip" data-place="None">
+                  미정
+                </button>
+                <button type="button" class="choice-chip" data-place="Etc">
+                  기타
+                </button>
+              </div>
+            </div>
+          </div>
+          <label class="wide"
+            >일정 제목 *<input
+              id="title"
+              placeholder="예: 주일말씀" /></label
+          >
+          <label class="speaker-field"
+            >강사명
+            <div class="speaker-row">
+              <input id="speaker" placeholder="이요한" autocomplete="off" />
+              <button type="button" id="speakerPaButton" class="speaker-quick-btn">
+                PA
+              </button>
+              <button
+                type="button"
+                id="speakerGwangjuButton"
+                class="speaker-quick-btn"
+                data-speaker-group="gwangju"
+                title="명단에서 선택"
+              >
+                명단
+              </button>
+            </div>
+            <div
+              id="speakerPickPopover"
+              class="speaker-pick-popover hidden"
+              role="listbox"
+              aria-label="명단 선택"
+              hidden
+            >
+              <div id="speakerPickTitle" class="speaker-pick-title">명단</div>
+              <div id="speakerPickList" class="speaker-pick-list"></div>
+            </div>
+          </label>
+          <label>부가 정보<input id="accessory" placeholder="부가 정보" /></label
+          ><label class="wide"
+            >설명<textarea
+              id="note"
+              rows="3"
+              placeholder="준비 사항이나 전달할 내용을 적어주세요."
+            ></textarea>
+          </label>
+          <div class="wide official-doc-block is-collapsed" id="officialDocBlock">
+            <button
+              type="button"
+              id="officialDocToggle"
+              class="official-doc-toggle"
+              aria-expanded="false"
+            >
+              <span>공문</span>
+              <span id="officialDocSummary" class="official-doc-summary"
+                >연결 없음</span
+              >
+              <span class="official-doc-chevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="officialDocBody" class="official-doc-body">
+              <p id="officialDocStatus" class="official-doc-status">
+                연결된 공문 없음
+              </p>
+              <div class="choice-row official-doc-actions">
+                <button type="button" id="officialDocUploadButton" class="choice-chip">
+                  공문 업로드
+                </button>
+                <button type="button" id="officialDocLinkButton" class="choice-chip">
+                  공문 연결
+                </button>
+                <button
+                  type="button"
+                  id="officialDocViewButton"
+                  class="choice-chip"
+                  disabled
+                >
+                  공문 보기
+                </button>
+                <button
+                  type="button"
+                  id="officialDocClearButton"
+                  class="choice-chip hidden"
+                >
+                  연결 해제
+                </button>
+              </div>
+              <input
+                id="officialDocFileInput"
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,.jpg,.jpeg,.png,.gif,.webp,.bmp"
+                hidden
+              />
+            </div>
+          </div>
+        </div>
+        <fieldset>
+          <legend>사전준비</legend>
+          <label class="check"
+            ><input type="checkbox" value="Recording" /> 녹화</label
+          ><label class="check"
+            ><input type="checkbox" value="Praise" /> 특송준비</label
+          ><label class="check"
+            ><input type="checkbox" value="Streaming" /> 스트리밍준비</label
+          ><label class="check"
+            ><input type="checkbox" value="OtherDisplay" /> 외부입력 준비</label
+          >
+        </fieldset>
+        </div>
+        <div id="scheduleBulkPanel" class="bulk-panel hidden">
+          <p class="bulk-lead">
+            <strong>여러 일정을 표에 직접 작성</strong>한 뒤 한 번에 저장합니다.
+            종료일을 넣으면 그 기간의 날짜마다 일정이 생성됩니다.
+            제목 없는 행은 건너뜁니다. Tab 이동 · 제목 Enter면 다음 행.
+          </p>
+          <div class="bulk-toolbar">
+            <span class="field-label" id="bulkRowCountLabel">0행</span>
+            <div class="bulk-toolbar-actions">
+              <button type="button" id="bulkFillDatesButton" class="button ghost" title="첫 행 날짜를 빈 칸에 채움">
+                날짜 채우기
+              </button>
+              <button type="button" id="bulkAddRowButton" class="button soft">
+                1행 추가
+              </button>
+              <button type="button" id="bulkClearRowsButton" class="button ghost">
+                비우기
+              </button>
+            </div>
+          </div>
+          <div class="bulk-table-wrap">
+            <table class="bulk-schedule-table">
+              <thead>
+                <tr>
+                  <th class="bulk-col-date">시작일 *</th>
+                  <th class="bulk-col-end">종료일</th>
+                  <th class="bulk-col-title">일정 제목 *</th>
+                  <th class="bulk-col-time">시간</th>
+                  <th class="bulk-col-place">장소</th>
+                  <th class="bulk-col-speaker">강사</th>
+                  <th class="bulk-col-color">색상</th>
+                  <th class="bulk-col-prep">준비</th>
+                  <th class="bulk-col-remove" aria-label="행 삭제"></th>
+                </tr>
+              </thead>
+              <tbody id="bulkScheduleRows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="dialog-actions schedule-dialog-actions">
+          <button
+            type="button"
+            id="deleteScheduleButton"
+            class="button danger hidden"
+          >
+            삭제
+          </button>
+          <span class="dialog-actions-spacer"></span>
+          <button type="button" id="cancelButton" class="button ghost">
+            취소</button
+          ><button type="submit" id="scheduleSubmitButton" class="button primary">
+            저장
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="bulkScheduleDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">BULK ENTRY</span>
+          <h2>일괄 일정 입력</h2>
+        </div>
+        <button
+          type="button"
+          id="bulkScheduleCloseButton"
+          class="icon-button"
+          aria-label="닫기"
+        >
+          ×
+        </button>
+      </div>
+      <p class="panel-copy bulk-schedule-hint">
+        제목이 있는 행만 저장됩니다. 시작·종료가 같으면 하루 일정으로
+        들어갑니다.
+      </p>
+      <div class="bulk-schedule-table-wrap">
+        <table class="bulk-schedule-table" aria-label="일괄 일정 입력">
+          <thead>
+            <tr>
+              <th>시작일</th>
+              <th>종료일</th>
+              <th>일정 제목</th>
+              <th>시간</th>
+              <th>장소</th>
+              <th>색상</th>
+              <th aria-label="행 삭제"></th>
+            </tr>
+          </thead>
+          <tbody id="bulkScheduleBody"></tbody>
+        </table>
+      </div>
+      <div class="dialog-actions bulk-schedule-actions">
+        <button type="button" id="bulkScheduleAddRow" class="button soft">
+          행 추가
+        </button>
+        <span class="dialog-actions-spacer"></span>
+        <button type="button" id="bulkScheduleCancel" class="button ghost">
+          취소
+        </button>
+        <button type="button" id="bulkScheduleSave" class="button primary">
+          저장
+        </button>
+      </div>
+    </dialog>
+    <dialog id="dayDetailDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">DAY SCHEDULE</span>
+          <h2 id="dayDetailTitle">날짜 일정</h2>
+        </div>
+        <button type="button" id="dayDetailClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <div id="dayDetailList" class="day-detail-list"></div>
+      <div class="dialog-actions day-detail-actions">
+        <button type="button" id="dayDetailAdd" class="button soft">
+          이 날짜에 추가
+        </button>
+        <button type="button" id="dayDetailCloseButton" class="button ghost">
+          닫기
+        </button>
+      </div>
+    </dialog>
+    <dialog id="officialDocViewerDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">OFFICIAL DOCUMENT</span>
+          <h2 id="officialDocViewerTitle">공문 보기</h2>
+        </div>
+        <button
+          type="button"
+          id="officialDocViewerClose"
+          class="icon-button"
+          aria-label="닫기"
+        >
+          ×
+        </button>
+      </div>
+      <div class="official-doc-viewer-toolbar">
+        <button type="button" id="officialDocViewerZoomOut" class="button ghost" title="축소">
+          −
+        </button>
+        <span id="officialDocViewerZoomLabel" class="official-doc-zoom-label">100%</span>
+        <button type="button" id="officialDocViewerZoomIn" class="button ghost" title="확대">
+          +
+        </button>
+        <button type="button" id="officialDocViewerZoomReset" class="button ghost">
+          맞춤
+        </button>
+      </div>
+      <div class="official-doc-viewer-body">
+        <img id="officialDocViewerImage" alt="공문 이미지" />
+      </div>
+      <div class="official-doc-viewer-nav">
+        <button type="button" id="officialDocViewerPrev" class="button ghost">
+          이전
+        </button>
+        <span id="officialDocViewerPageLabel" class="official-doc-page-label"
+          >1 / 1</span
+        >
+        <button type="button" id="officialDocViewerNext" class="button ghost">
+          다음
+        </button>
+      </div>
+      <div class="dialog-actions official-doc-viewer-actions">
+        <button
+          type="button"
+          id="officialDocMakeScheduleButton"
+          class="button primary"
+        >
+          이 공문을 일정으로 만들기
+        </button>
+        <button type="button" id="officialDocViewerCloseButton" class="button ghost">
+          닫기
+        </button>
+      </div>
+    </dialog>
+    <dialog id="monthlyOfficialDocsDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">MONTHLY DOCUMENTS</span>
+          <h2 id="monthlyOfficialDocsTitle">이번 달 공문</h2>
+        </div>
+        <button
+          type="button"
+          id="monthlyOfficialDocsClose"
+          class="icon-button"
+          aria-label="닫기"
+        >
+          ×
+        </button>
+      </div>
+      <p id="monthlyOfficialDocsHint" class="panel-copy">
+        `_official_documents`에서 이번 달 날짜(YYYYMMDD)로 시작하는 공문입니다.
+        항목을 누르면 공문을 봅니다.
+      </p>
+      <p id="monthlyOfficialDocsState" class="nas-state" data-state="idle">대기</p>
+      <ul id="monthlyOfficialDocsList" class="monthly-official-docs-list"></ul>
+      <div class="dialog-actions">
+        <button type="button" id="monthlyOfficialDocsDone" class="button primary">
+          닫기
+        </button>
+      </div>
+    </dialog>
+
+    <dialog id="officialDocLinkDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">LINK DOCUMENT</span>
+          <h2>공문 연결</h2>
+        </div>
+        <button
+          type="button"
+          id="officialDocLinkClose"
+          class="icon-button"
+          aria-label="닫기"
+        >
+          ×
+        </button>
+      </div>
+      <p class="panel-copy">
+        `_official_documents` 폴더에서 <strong>YYYYMMDD(8자리)</strong>로 시작하는
+        공문만 연결할 수 있습니다. 같은 이름·다른 페이지 번호는 한 항목으로 보이며,
+        일정 날짜 기준 앞뒤 2개월을 넘는 공문은 목록에서 제외됩니다.
+        기간 공문(`20260901_20261011_…`)은 시작·끝 날짜를 함께 인식합니다.
+      </p>
+      <label class="wide official-doc-link-label"
+        >공문 파일
+        <select id="officialDocLinkSelect">
+          <option value="">불러오는 중...</option>
+        </select>
+      </label>
+      <p id="officialDocLinkState" class="nas-state" data-state="idle"></p>
+      <div class="dialog-actions">
+        <button type="button" id="officialDocLinkCancel" class="button ghost">
+          취소
+        </button>
+        <button type="button" id="officialDocLinkConfirm" class="button primary" disabled>
+          연결
+        </button>
+      </div>
+    </dialog>
+    <div id="toast" class="toast"></div>
+    <dialog id="nasDialog">
+      <form method="dialog" id="nasForm">
+        <div class="dialog-head">
+          <div>
+            <span class="section-kicker">LOCAL SMB BRIDGE</span>
+            <h2>NAS 연결 설정</h2>
+          </div>
+          <button type="button" id="nasCloseButton" class="icon-button" aria-label="닫기">
+            ×
+          </button>
+        </div>
+        <p class="panel-copy nas-warning">
+          SMB 인증은 로컬 프로그램이 처리합니다. 시작 화면에서
+          <strong>기억하기</strong>를 켠 계정만 이 PC에 암호화되어 저장됩니다.
+        </p>
+        <div class="form-grid">
+          <label
+            >NAS IP 또는 이름 *<input
+              id="nasHost"
+              list="loginHostOptions"
+              placeholder="192.168.0.10" /></label
+          ><label class="login-share-field"
+            ><span class="login-share-heading"
+              ><span>공유 폴더명 *</span
+              ><button
+                type="button"
+                id="nasShareDefaultButton"
+                class="button ghost share-default-button"
+              >
+                기본값
+              </button></span
+            ><input
+              id="nasShare"
+              value="Temp DATA\_data"
+              placeholder="예: Temp DATA\_data" /></label
+          ><label
+            >사용자 계정 *<input
+              id="nasUser"
+              autocomplete="username" /></label
+          ><label
+            >비밀번호 *<input
+              id="nasPassword"
+              type="password"
+              autocomplete="current-password" /></label
+          ><label class="wide check remember-inline"
+            ><input id="nasRemember" type="checkbox" />
+            계정·비밀번호 기억하기 (암호화)</label
+          ><label class="wide"
+            >공유 데이터 파일<select id="nasFile" disabled>
+              <option>먼저 SMB 연결을 확인하세요.</option>
+            </select></label
+          >
+        </div>
+        <p id="nasConnectionState" class="nas-state" data-state="idle">
+          연결되지 않음
+        </p>
+        <div class="dialog-actions nas-dialog-actions">
+          <button type="button" id="nasTestButton" class="button outline">
+            SMB 연결 확인</button
+          ><button
+            type="button"
+            id="nasLoadButton"
+            class="button soft"
+            disabled
+          >
+            선택 파일 불러오기</button
+          ><button
+            type="button"
+            id="nasSaveButton"
+            class="button primary"
+            disabled
+          >
+            저장 후 닫기
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="importModeDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">IMPORT JSON</span>
+          <h2>가져오기 방식</h2>
+        </div>
+        <button type="button" id="importModeClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <p class="panel-copy import-mode-copy">
+        다른 PC에서 내보낸 JSON을 어떻게 반영할지 선택하세요. 선택 후 파일을
+        고르면 바로 적용됩니다.
+      </p>
+      <div class="import-mode-options">
+        <button type="button" class="import-mode-card" data-import-mode="replace">
+          <strong>덮어쓰기</strong>
+          <span
+            >현재 보드의 일정을 <em>모두 지우고</em> 파일 내용으로
+            교체합니다. 기존 로컬 일정은 복구할 수 없으니, 전체 교체가 필요할
+            때만 사용하세요.</span
+          >
+        </button>
+        <button type="button" class="import-mode-card" data-import-mode="merge">
+          <strong>추가 (병합)</strong>
+          <span
+            >현재 일정을 유지한 채 파일의 일정을 <em>추가</em>합니다. 같은
+            <code>id</code>가 있으면 파일 내용으로 갱신하고, 새
+            <code>id</code>는 그대로 붙입니다. 다른 PC에서 만든 일정만 가져올
+            때 권장합니다.</span
+          >
+        </button>
+      </div>
+      <div class="dialog-actions" style="grid-template-columns: 1fr auto">
+        <span class="dialog-actions-spacer"></span>
+        <button type="button" id="importModeCancel" class="button ghost">
+          취소
+        </button>
+      </div>
+    </dialog>
+    <dialog id="appSettingsDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">APP SETTINGS</span>
+          <h2>설정</h2>
+        </div>
+        <button type="button" id="appSettingsClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <div class="settings-tabs" role="tablist" aria-label="설정 탭">
+        <button
+          type="button"
+          class="settings-tab active"
+          data-settings-tab="speakers"
+          role="tab"
+          aria-selected="true"
+        >
+          명단
+        </button>
+        <button
+          type="button"
+          class="settings-tab"
+          data-settings-tab="colors"
+          role="tab"
+          aria-selected="false"
+        >
+          색상
+        </button>
+        <button
+          type="button"
+          class="settings-tab"
+          data-settings-tab="fonts"
+          role="tab"
+          aria-selected="false"
+        >
+          색상-폰트
+        </button>
+        <button
+          type="button"
+          class="settings-tab"
+          data-settings-tab="data"
+          role="tab"
+          aria-selected="false"
+        >
+          자료관리
+        </button>
+        <button
+          type="button"
+          class="settings-tab"
+          data-settings-tab="misc"
+          role="tab"
+          aria-selected="false"
+        >
+          기타
+        </button>
+      </div>
+      <div
+        id="settingsTabSpeakers"
+        class="settings-tab-panel"
+        role="tabpanel"
+        data-settings-panel="speakers"
+      >
+        <p id="speakerRosterSyncHint" class="settings-hint">
+          일정 입력의 「명단」 버튼에서 고를 이름을 관리합니다.
+          ↑↓로 표시 순서를 바꿀 수 있습니다.
+        </p>
+        <div class="speaker-roster-grid speaker-roster-grid-single">
+          <section class="speaker-roster" data-roster="gwangju">
+            <div class="speaker-roster-add">
+              <input
+                id="speakerRosterAddGwangju"
+                type="text"
+                placeholder="이름 입력"
+                autocomplete="off"
+              />
+              <button type="button" id="speakerRosterAddGwangjuBtn" class="button soft">
+                추가
+              </button>
+            </div>
+            <ul id="speakerRosterListGwangju" class="speaker-roster-list"></ul>
+          </section>
+        </div>
+      </div>
+      <div
+        id="settingsTabColors"
+        class="settings-tab-panel hidden"
+        role="tabpanel"
+        data-settings-panel="colors"
+      >
+        <p id="colorRulesSyncHint" class="settings-hint">
+          「자동」배경에 쓰는 조건입니다. 위쪽 조건이 우선이며, 제목에 문자열이
+          들어가면 그 색으로 표시합니다. <code>or</code> /
+          <code>and</code> / <code>=</code> 지원. 예:
+          <code>청년회or회별모임</code> / <code>집회and기도</code> /
+          <code>=청년회</code>
+        </p>
+        <p id="colorRulesSyncStatus" class="settings-hint"></p>
+        <div class="font-default-row color-auto-default-row">
+          <span class="field-label">자동·조건 없음일 때 기본 배경</span>
+          <label class="font-rule-color-field">
+            <span>사용</span>
+            <input
+              id="colorAutoDefaultEnabled"
+              type="checkbox"
+              aria-label="자동 기본 배경 사용"
+            />
+          </label>
+          <label class="font-rule-color-field" title="기본 배경색">
+            <span>색</span>
+            <input
+              id="colorAutoDefaultColor"
+              type="color"
+              value="#4a7fb5"
+              aria-label="자동 기본 배경색"
+            />
+          </label>
+        </div>
+        <div class="font-default-row">
+          <span class="field-label">공휴일 배경</span>
+          <label class="font-rule-color-field">
+            <span>사용</span>
+            <input
+              id="holidayBgEnabled"
+              type="checkbox"
+              aria-label="공휴일 배경 사용"
+            />
+          </label>
+          <label class="font-rule-color-field" title="공휴일 배경색">
+            <span>색</span>
+            <input
+              id="holidayBgColor"
+              type="color"
+              value="#f8ebe8"
+              aria-label="공휴일 배경색"
+            />
+          </label>
+        </div>
+        <div class="color-rule-add">
+          <input
+            id="colorRulePattern"
+            type="text"
+            placeholder="제목 조건 (or / and / =)"
+            autocomplete="off"
+          />
+          <input id="colorRuleColor" type="color" value="#4a7fb5" aria-label="조건 색상" />
+          <button type="button" id="colorRuleAddBtn" class="button soft">
+            추가
+          </button>
+        </div>
+        <ul id="colorRuleList" class="color-rule-list"></ul>
+      </div>
+      <div
+        id="settingsTabFonts"
+        class="settings-tab-panel hidden"
+        role="tabpanel"
+        data-settings-panel="fonts"
+      >
+        <p id="fontRulesSyncHint" class="settings-hint">
+          달력 보기 제목·강사 글자색입니다. 기본값을 정한 뒤, 제목 조건으로
+          덮어쓸 수 있습니다. 조건은 배경 색상과 같이 <code>or</code> /
+          <code>and</code> / <code>=</code> 입니다.
+        </p>
+        <p id="fontRulesSyncStatus" class="settings-hint"></p>
+        <div class="font-default-row">
+          <span class="field-label">기본 글자색</span>
+          <label class="font-rule-color-field" title="제목 기본 글자색">
+            <span>제목</span>
+            <input
+              id="fontDefaultTitleColor"
+              type="color"
+              value="#18201f"
+              aria-label="제목 기본 글자색"
+            />
+          </label>
+          <label class="font-rule-color-field" title="강사 기본 글자색">
+            <span>강사</span>
+            <input
+              id="fontDefaultSpeakerColor"
+              type="color"
+              value="#71807b"
+              aria-label="강사 기본 글자색"
+            />
+          </label>
+        </div>
+        <hr class="settings-divider" />
+        <p class="settings-hint">조건별 글자색 (위쪽 우선)</p>
+        <div class="color-rule-add font-rule-add">
+          <input
+            id="fontRulePattern"
+            type="text"
+            placeholder="제목 조건 (or / and / =)"
+            autocomplete="off"
+          />
+          <label class="font-rule-color-field" title="제목 글자색">
+            <span>제목</span>
+            <input
+              id="fontRuleTitleColor"
+              type="color"
+              value="#18201f"
+              aria-label="제목 글자색"
+            />
+          </label>
+          <label class="font-rule-color-field" title="강사 글자색">
+            <span>강사</span>
+            <input
+              id="fontRuleSpeakerColor"
+              type="color"
+              value="#71807b"
+              aria-label="강사 글자색"
+            />
+          </label>
+          <button type="button" id="fontRuleAddBtn" class="button soft">
+            추가
+          </button>
+        </div>
+        <ul id="fontRuleList" class="color-rule-list"></ul>
+      </div>
+      <div
+        id="settingsTabData"
+        class="settings-tab-panel hidden"
+        role="tabpanel"
+        data-settings-panel="data"
+      >
+        <p class="settings-hint">
+          달력 보기에서 지금 보고 있는 달력표의 일정을 한꺼번에 지웁니다. 해당
+          월뿐 아니라, 같은 주에 보이는 이전달·다음달 칸 일정도 포함됩니다. NAS
+          연결 상태면 삭제 후 자동 저장됩니다.
+        </p>
+        <div class="data-month-clear">
+          <p id="clearCalendarViewPreview" class="settings-hint">
+            달력 보기로 전환하면 사용할 수 있습니다.
+          </p>
+          <button
+            type="button"
+            id="clearCalendarViewButton"
+            class="button danger"
+            disabled
+          >
+            현재 보고 있는 달력표의 모든 스케줄 삭제
+          </button>
+        </div>
+        <hr class="settings-divider" />
+        <p class="settings-hint">
+          특정 월을 골라 그달 일정을 지울 수도 있습니다. (목록/달력 모두)
+        </p>
+        <div class="data-month-clear">
+          <label
+            >대상 월
+            <input id="clearMonthInput" type="month" />
+          </label>
+          <p id="clearMonthPreview" class="settings-hint">삭제할 월을 선택하세요.</p>
+          <button type="button" id="clearMonthButton" class="button danger" disabled>
+            해당 월 일정 모두 삭제
+          </button>
+        </div>
+        <hr class="settings-divider" />
+        <p class="settings-hint">
+          JSON으로 일정을 가져오거나 추가할 때, 제목이 아래 조건에 맞으면 넣지
+          않습니다. 색상 조건과 같이 <code>or</code> / <code>and</code> /
+          <code>=</code> 로 문자열을 검사합니다. 예:
+          <code>청년회or회별모임</code> / <code>집회and기도</code> /
+          <code>=청년회</code>
+        </p>
+        <div class="color-rule-add import-exclude-add">
+          <input
+            id="importExcludePattern"
+            type="text"
+            placeholder="제외할 제목 조건 (or / and / =)"
+            autocomplete="off"
+          />
+          <button type="button" id="importExcludeAddBtn" class="button soft">
+            추가
+          </button>
+        </div>
+        <ul id="importExcludeList" class="color-rule-list"></ul>
+      </div>
+      <div
+        id="settingsTabMisc"
+        class="settings-tab-panel hidden"
+        role="tabpanel"
+        data-settings-panel="misc"
+      >
+        <p class="settings-hint">
+          달력 보기에서 2일 이상 이어진 일정 제목 앞에 기간을 표시합니다. 예:
+          <code>(8.31~9.4) 일정제목 강사명PA</code>
+        </p>
+        <label class="misc-option-row">
+          <input id="miscShowPeriodDates" type="checkbox" />
+          <span>기간일정 날짜표시</span>
+        </label>
+        <div class="font-default-row" id="miscPeriodColorRow">
+          <span class="field-label">기간 글자색</span>
+          <label class="font-rule-color-field" title="기간 글자색 기준">
+            <span>기준</span>
+            <select id="miscPeriodColorMode" aria-label="기간 글자색 기준">
+              <option value="custom">지정색</option>
+              <option value="title">일정제목과 동일</option>
+              <option value="speaker">강사명과 동일</option>
+            </select>
+          </label>
+          <label class="font-rule-color-field" title="기간 지정색">
+            <span>색</span>
+            <input
+              id="miscPeriodColor"
+              type="color"
+              value="#71807b"
+              aria-label="기간 지정색"
+            />
+          </label>
+        </div>
+      </div>
+      <div class="dialog-actions nas-dialog-actions">
+        <span class="dialog-actions-spacer"></span>
+        <button type="button" id="appSettingsDone" class="button primary">닫기</button>
+      </div>
+    </dialog>
+
+    <dialog id="calendarFilterDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="section-kicker">CALENDAR FILTERS</span>
+          <h2>달력 필터</h2>
+        </div>
+        <button type="button" id="calendarFilterClose" class="icon-button" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <p class="settings-hint">
+        제목 조건에 맞는 일정만 달력에 보이게 체크할 수 있습니다.
+        <code>or</code> / <code>and</code> / <code>=</code> 지원. 어떤 조건에도
+        안 걸리는 일정은 「기타」로 묶입니다.
+      </p>
+      <div class="color-rule-add">
+        <input
+          id="calendarFilterPattern"
+          type="text"
+          placeholder="제목 조건 (예: =청년회 / 집회and기도)"
+          autocomplete="off"
+        />
+        <button type="button" id="calendarFilterAddBtn" class="button soft">
+          추가
+        </button>
+      </div>
+      <ul id="calendarFilterRuleList" class="color-rule-list"></ul>
+      <div class="dialog-actions">
+        <button type="button" id="calendarFilterDone" class="button primary">닫기</button>
+      </div>
+    </dialog>
+
+    <dialog id="restoreDialog">
+      <form method="dialog" id="restoreForm">
+        <div class="dialog-head">
+          <div>
+            <span class="section-kicker">BACKUP RESTORE</span>
+            <h2>백업에서 복원</h2>
+          </div>
+          <button type="button" id="restoreCloseButton" class="icon-button" aria-label="닫기">
+            ×
+          </button>
+        </div>
+        <p class="panel-copy nas-warning">
+          <code>_backup</code> 폴더의 ZIP 백업을 선택하면 현재 연결 파일로
+          복원하고 일정 보드에 불러옵니다.
+        </p>
+        <label class="wide restore-select-label"
+          >백업 파일
+          <select id="restoreFileSelect" size="8" class="restore-select">
+            <option value="">백업 목록을 불러오는 중...</option>
+          </select>
+        </label>
+        <p id="restoreState" class="nas-state" data-state="idle">대기</p>
+        <div class="dialog-actions nas-dialog-actions">
+          <button type="button" id="restoreRefreshButton" class="button outline">
+            목록 새로고침</button
+          ><button type="button" id="restoreCancelButton" class="button ghost">
+            취소</button
+          ><button type="button" id="restoreConfirmButton" class="button primary" disabled>
+            선택 항목 복원
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <script>
+      (function () {
+        try {
+          if (new URLSearchParams(location.search).get("demo") !== "1") return;
+          var demoSrc = location.pathname.indexOf("/schedule") === 0 ? "/schedule/demo-boot.js" : "demo-boot.js";
+          document.write('<script src="' + demoSrc + '"><\/script>');
+        } catch (_) { /* ignore */ }
+      })();
+    </script>
+    <script src="app.js"></script>
+  </body>
+</html>

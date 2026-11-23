@@ -1,0 +1,15 @@
+---
+description: C# LocalBridge와 NAS/SMB API 규칙
+globs: LocalBridge/**/*.cs,LocalBridge/*.csproj,publish-bridge.bat,package-portable*.ps1,package-portable*.sh
+alwaysApply: false
+---
+
+# LocalBridge
+
+- Bind only `http://127.0.0.1:17821` when `bridge_bind_localhost_only` is true.
+- Embed `index.html`, `styles.css`, `app.js`, `sw.js` as resources (see `LocalBridge.csproj`). Changing the web files requires republish.
+- JSON API uses camelCase. Do not store `request.Password`.
+- Target is self-contained `net8.0` (Windows RID → `WinExe`, macOS RID → `Exe`).
+- Windows: SMB via `WNetAddConnection2`. Prefer `package-portable.bat` → `publish/LocalBridge/` (`BroadcastingSchedule.exe`).
+- macOS: SMB via `mount_smbfs` under `~/Library/Application Support/BroadcastingSchedule/mnt/`. Prefer `package-portable-macos.sh` → `publish/LocalBridge-macos/` (`BroadcastingSchedule`).
+- Do not expand CORS or bind on all interfaces unless the user explicitly asks.

@@ -1,0 +1,15 @@
+---
+description: Windows LocalBridge NAS/SMB API 규칙
+globs: LocalBridge/**/*.cs,LocalBridge/*.csproj,publish-bridge.bat,package-portable.*
+alwaysApply: false
+---
+
+# LocalBridge
+
+- Bind only `http://127.0.0.1:17822` when `bridge_bind_localhost_only` is true.
+- `www/` 의 html/css/js 를 EmbeddedResource 로 제공한다. 웹 변경 후 exe 재배포가 필요하다.
+- JSON API는 camelCase. 요청 비밀번호를 로그·디스크 평문에 남기지 않는다.
+- Target: self-contained Windows (`WorkLog.exe`). `package-portable.ps1` / `publish-bridge.bat` 로 배포한다.
+- 스케줄 API는 상위 폴더 읽기 전용. 일지·defaults·audit 만 쓴다.
+- CORS를 넓히거나 모든 인터페이스에 바인딩하지 않는다 (사용자가 명시할 때만).
+- 브라우저 창을 닫으면 `/api/session/bye` + ping 워치독으로 `WorkLog.exe` 프로세스가 종료된다.

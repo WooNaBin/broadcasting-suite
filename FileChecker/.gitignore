@@ -1,0 +1,16 @@
+## Build
+bin/
+obj/
+deploy/
+
+## 런타임 JSON만 무시 (data/ 폴더 전체는 Data/ 소스와 대소문자 충돌)
+/data/settings.json
+/data/schedules.json
+/data/*.json
+
+## IDE / OS
+.vs/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CtrlOne — 레이아웃 조절</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    .layout-editor-page {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      min-height: 100vh;
+      background: #e8eef3;
+    }
+    .layout-editor-side {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: #13202a;
+      color: #e8eef3;
+      overflow: auto;
+    }
+    .layout-editor-side h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-family: Outfit, sans-serif;
+    }
+    .layout-editor-side p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #9bb0c0;
+      line-height: 1.45;
+    }
+    .layout-editor-side a {
+      color: #7fd4d2;
+      font-size: 0.82rem;
+    }
+    .layout-group {
+      display: grid;
+      gap: 0.45rem;
+      padding: 0.65rem 0.7rem;
+      border: 1px solid #2a3d4d;
+      border-radius: 10px;
+      background: #1a2b38;
+    }
+    .layout-group h2 {
+      margin: 0 0 0.2rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #7fd4d2;
+    }
+    .layout-field {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.25rem 0.5rem;
+      align-items: center;
+      font-size: 0.78rem;
+    }
+    .layout-field label { color: #c5d4de; }
+    .layout-field output {
+      font-family: "IBM Plex Mono", monospace;
+      color: #fff;
+      min-width: 3.5rem;
+      text-align: right;
+    }
+    .layout-field input[type="range"] { grid-column: 1 / -1; width: 100%; }
+    .layout-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .layout-actions .btn {
+      flex: 1 1 auto;
+      font-size: 0.82rem;
+      padding: 0.45rem 0.55rem;
+    }
+    .layout-editor-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .layout-editor-main iframe {
+      flex: 1;
+      width: 100%;
+      border: 0;
+      background: #fff;
+    }
+    .layout-toast {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 8px;
+      background: #0e7c7b;
+      color: #fff;
+      font-size: 0.85rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .layout-toast.show { opacity: 1; }
+    @media (max-width: 900px) {
+      .layout-editor-page { grid-template-columns: 1fr; }
+      .layout-editor-main iframe { min-height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-editor-page">
+    <aside class="layout-editor-side">
+      <div>
+        <h1>레이아웃 조절</h1>
+        <p>
+          슬라이더로 A~E 열을 조절한 뒤 <strong>CSS 복사</strong> →
+          <code>wwwroot/css/layout.css</code> 에 붙여넣고 빌드하세요.
+          자세한 설명은 <code>LAYOUT.md</code>.
+        </p>
+        <p style="margin-top:0.45rem">
+          <a href="/demo.html">데모</a> ·
+          <a href="/">대시보드</a>
+        </p>
+      </div>
+
+      <div class="layout-group" data-group="A">
+        <h2>A · 이름/연결</h2>
+        <div class="layout-field" data-var="--col-a-min" data-unit="px" data-min="80" data-max="280" data-step="4">
+          <label>최소 폭</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--col-a-fr" data-unit="fr" data-min="0.4" data-max="2" data-step="0.02">
+          <label>비율</label><output></output>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="layout-group" data-group="B">
+        <h2>B · 상태</h2>
+        <div class="layout-field" data-var="--col-b-min" data-unit="px" data-min="72" data-max="220" data-step="4">
+          <label>최소 폭</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--col-b-fr" data-unit="fr" data-min="0.4" data-max="2" data-step="0.02">
+          <label>비율</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--mode-font-size" data-unit="rem" data-min="0.85" data-max="1.8" data-step="0.05">
+          <label>글자 크기</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--mode-min-height" data-unit="rem" data-min="2.5" data-max="7" data-step="0.1">
+          <label>최소 높이</label><output></output>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="layout-group" data-group="C">
+        <h2>C · 저장장치</h2>
+        <div class="layout-field" data-var="--col-c-min" data-unit="px" data-min="140" data-max="360" data-step="4">
+          <label>최소 폭</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--col-c-fr" data-unit="fr" data-min="0.6" data-max="2.4" data-step="0.02">
+          <label>비율</label><output></output>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="layout-group" data-group="D">
+        <h2>D · 기능 버튼</h2>
+        <div class="layout-field" data-var="--col-d-min" data-unit="px" data-min="160" data-max="420" data-step="4">
+          <label>최소 폭</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--col-d-fr" data-unit="fr" data-min="0.6" data-max="2.4" data-step="0.02">
+          <label>비율</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--transport-cols" data-unit="" data-min="2" data-max="6" data-step="1">
+          <label>한 줄 버튼 수</label><output></output>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="layout-group" data-group="E">
+        <h2>E · 순서</h2>
+        <div class="layout-field" data-var="--col-e-width" data-unit="rem" data-min="1.8" data-max="4" data-step="0.1">
+          <label>폭</label><output></output>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="layout-group">
+        <h2>카드 여백</h2>
+        <div class="layout-field" data-var="--card-gap-col" data-unit="rem" data-min="0.3" data-max="1.6" data-step="0.05">
+          <label>가로 간격</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--card-gap-row" data-unit="rem" data-min="0.3" data-max="1.6" data-step="0.05">
+          <label>세로 간격</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--card-padding-x" data-unit="rem" data-min="0.4" data-max="1.6" data-step="0.05">
+          <label>좌우 패딩</label><output></output>
+          <input type="range" />
+        </div>
+        <div class="layout-field" data-var="--card-padding-y" data-unit="rem" data-min="0.4" data-max="1.6" data-step="0.05">
+          <label>상하 패딩</label><output></output>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="layout-actions">
+        <button type="button" class="btn btn-primary" id="btn-copy-css">CSS 복사</button>
+        <button type="button" class="btn btn-soft" id="btn-reset">기본값</button>
+      </div>
+    </aside>
+    <main class="layout-editor-main">
+      <iframe id="preview" title="레이아웃 미리보기" src="/demo.html"></iframe>
+    </main>
+  </div>
+  <div class="layout-toast" id="toast">클립보드에 복사됨</div>
+  <script src="/js/layout-editor.js"></script>
+</body>
+</html>

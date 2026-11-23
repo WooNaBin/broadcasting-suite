@@ -1,0 +1,19 @@
+# Include / exclude rules for calendar events extracted from images.
+# Matching is case-insensitive substring against title + accessory text.
+
+include_keywords: []  # empty = keep all (after exclude)
+
+exclude_keywords:
+  - "생일"
+  - "기념일"
+  - "휴무"
+  - "사무실 휴무"
+  - "주차"
+  - "안내문"
+  - "광고"
+
+# Drop events whose title is only noise after OCR cleanup
+drop_empty_title: true
+
+# If true, multi-day ranges become one item per day (same title/speaker)
+expand_date_ranges: true

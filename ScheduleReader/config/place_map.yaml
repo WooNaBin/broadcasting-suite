@@ -1,0 +1,30 @@
+# Korean place labels → schedule-data-manager Place enum
+# Enum: None, Main_Large, Main_Medium, Main_Small,
+#       Edu_Large, Edu_Medium, Edu_Small,
+#       Edu_Nongseon, Edu_Siseon, Edu_Go2, Etc
+
+default: None
+
+mappings:
+  본당 대예배실: Main_Large
+  본당 대예배: Main_Large
+  본당: Main_Large
+  대예배실: Main_Large
+  대예배: Main_Large
+  본당 중예배실: Main_Medium
+  중예배실: Main_Medium
+  본당 소예배실: Main_Small
+  소예배실: Main_Small
+  교육관 대예배실: Edu_Large
+  교육관 대: Edu_Large
+  교육관 중예배실: Edu_Medium
+  교육관 중: Edu_Medium
+  교육관 소예배실: Edu_Small
+  교육관 소: Edu_Small
+  교육관 농선본당: Edu_Nongseon
+  농선본당: Edu_Nongseon
+  교육관 시선본당: Edu_Siseon
+  시선본당: Edu_Siseon
+  교육관 고2실: Edu_Go2
+  고2실: Edu_Go2
+  기타: Etc
