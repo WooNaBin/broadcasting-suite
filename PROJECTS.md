@@ -82,6 +82,8 @@
 - NAS/SMB와 무관. 브라우저 닫으면 프로세스 종료(UI 세션 가드).
 - **단일 인스턴스** mutex (`Local\CtrlOne.Dashboard`) — 두 번째 실행 시 기존 UI만 연다.
 - TCP 명령 쓰기 직렬화 + 전송 실패를 삼키지 않음 + 연결 타임아웃(4초).
+- **원터치 액션** (`actions.json`): 대시보드에서 장비·명령을 묶어 저장 → UI/Stream Deck 버튼이 해당 액션만 실행.
+- Stream Deck: `CtrlOne/streamdeck/` 플러그인 — CtrlOne 실행 중에만 목록 표시, 종료 시 오프라인, 재실행 시 재표시.
 
 ### 검토에서 남은 개선 후보
 

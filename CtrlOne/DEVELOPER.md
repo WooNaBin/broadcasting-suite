@@ -6,13 +6,29 @@
 CtrlOne.exe
  ├─ ASP.NET Core Minimal Host (http://127.0.0.1:5177)
  ├─ Static UI (wwwroot) + SignalR Hub
- ├─ DeviceManager (장비 수명주기 / 일괄 제어 / 영속화)
+ ├─ DeviceManager (장비 수명주기 / 일괄 제어 / 원터치 액션 / 영속화)
  ├─ DeviceStore (devices.json)
+ ├─ PresetStore (presets.json)
+ ├─ ActionStore (actions.json)
  └─ ISequenceDevice 구현체
       └─ HyperDeckDevice (TCP 9993)
 ```
 
 실행 시 `Program.cs`가 웹 호스트를 띄우고, 시작 콜백에서 `DeviceManager.InitializeAsync`로 `devices.json`을 로드한 뒤 기본 브라우저를 엽니다.
+
+브라우저를 닫으면 프로세스가 종료됩니다. Stream Deck 플러그인은 CtrlOne이 살아 있을 때만 `/api/actions`를 폴링하고, 종료 시 오프라인으로 표시한 뒤 재실행 시 다시 목록을 불러옵니다.
+
+## 원터치 액션 · Stream Deck
+
+| 경로 | 역할 |
+|------|------|
+| `Services/ActionStore.cs` | `actions.json` 로드/저장 |
+| `GET /api/actions` | 액션 목록 (Stream Deck용) |
+| `POST /api/actions/{id}/run` | 액션 실행 |
+| `streamdeck/com.ctrlone.actions.sdPlugin/` | Elgato Stream Deck 플러그인 |
+| `streamdeck/README.md` | 설치·동작 안내 |
+
+대시보드에서 장비 + 명령(녹화/중지/재생 등)을 묶어 액션을 만들고, UI 버튼 또는 Stream Deck이 그 액션만 실행합니다.
 
 ## 주요 구성 요소
 

@@ -52,6 +52,7 @@ else
 
 builder.Services.AddSingleton<DeviceStore>();
 builder.Services.AddSingleton<PresetStore>();
+builder.Services.AddSingleton<ActionStore>();
 builder.Services.AddSingleton<DeviceManager>();
 builder.Services.AddSingleton<HyperDeckDiscoveryService>();
 builder.Services.AddSingleton<UiSessionGuard>();
@@ -70,12 +71,62 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.MapHub<DashboardHub>("/hubs/dashboard");
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", (DeviceManager devices) => Results.Ok(new
 {
     status = "ok",
     app = "CtrlOne",
-    devicesJson = AppPaths.DevicesJsonPath
+    devicesJson = AppPaths.DevicesJsonPath,
+    actionsJson = AppPaths.ActionsJsonPath,
+    actionCount = devices.GetActions().Count
 }));
+app.MapGet("/api/actions", (DeviceManager devices) =>
+{
+    var snaps = devices.GetSnapshots().ToDictionary(d => d.Id, d => d.Name);
+    var list = devices.GetActions().Select(a => new
+    {
+        id = a.Id,
+        name = a.Name,
+        command = a.Command,
+        deviceIds = a.DeviceIds,
+        deviceNames = a.DeviceIds
+            .Select(id => snaps.TryGetValue(id, out var n) ? n : id.ToString()[..8])
+            .ToList()
+    });
+    return Results.Ok(list);
+});
+app.MapGet("/api/actions/{id:guid}", (Guid id, DeviceManager devices) =>
+{
+    var action = devices.GetAction(id);
+    if (action is null)
+        return Results.NotFound(new { error = "액션 없음" });
+    var snaps = devices.GetSnapshots().ToDictionary(d => d.Id, d => d.Name);
+    return Results.Ok(new
+    {
+        id = action.Id,
+        name = action.Name,
+        command = action.Command,
+        deviceIds = action.DeviceIds,
+        deviceNames = action.DeviceIds
+            .Select(deviceId => snaps.TryGetValue(deviceId, out var n) ? n : deviceId.ToString()[..8])
+            .ToList()
+    });
+});
+app.MapPost("/api/actions/{id:guid}/run", async (Guid id, DeviceManager devices) =>
+{
+    try
+    {
+        await devices.RunActionAsync(id);
+        return Results.Ok(new { ok = true, id });
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound(new { ok = false, error = "액션 없음" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
 app.MapPost("/api/goodbye", (UiSessionGuard sessions) =>
 {
     sessions.NotifyUiClosing();

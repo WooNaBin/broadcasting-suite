@@ -23,6 +23,7 @@ publish/
 **/.env.*
 **/devices.json
 **/presets.json
+**/actions.json
 **/data/settings.json
 **/data/schedules.json
 **/data/filechecker-settings.json

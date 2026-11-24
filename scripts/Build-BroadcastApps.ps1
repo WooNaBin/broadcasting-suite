@@ -1006,6 +1006,20 @@ function Build-BroadcastNasBridge {
     Add-Result -Name 'BroadcastNasBridge' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git
 }
 
+function Copy-CtrlOneStreamDeck {
+    param([Parameter(Mandatory)][string]$TargetDir)
+    $src = Join-Path $ProjectsRoot 'CtrlOne\streamdeck'
+    if (-not (Test-Path (Join-Path $src 'com.ctrlone.actions.sdPlugin\manifest.json'))) {
+        Write-Host "  Stream Deck 플러그인 소스 없음 — 건너뜀: $src" -ForegroundColor Yellow
+        return
+    }
+    Ensure-Dir $TargetDir
+    $dst = Join-Path $TargetDir 'streamdeck'
+    if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
+    Copy-Item $src $dst -Recurse -Force
+    Write-Host "  + streamdeck → $dst"
+}
+
 # --- CtrlOne ---
 function Build-CtrlOne {
     Write-Step 'CtrlOne'
@@ -1029,7 +1043,7 @@ function Build-CtrlOne {
         $exe = Join-Path $stage 'CtrlOne.exe'
         if (-not (Test-Path $exe)) { throw 'CtrlOne.exe 없음' }
 
-        $keep = @('devices.json', 'presets.json', 'CtrlOne-macOS-arm64', 'CtrlOne-macOS-x64')
+        $keep = @('devices.json', 'presets.json', 'actions.json', 'CtrlOne-macOS-arm64', 'CtrlOne-macOS-x64')
         Get-ChildItem $dest -Force -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -notin ($keep + '_stage') } |
             Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
@@ -1043,6 +1057,8 @@ function Build-CtrlOne {
         }
         Remove-Item $stage -Recurse -Force
 
+        Copy-CtrlOneStreamDeck -TargetDir $dest
+
         $portable = Join-Path $dest 'CtrlOne-Windows-x64'
         if (Test-Path $portable) { Remove-Item $portable -Recurse -Force }
         Ensure-Dir $portable
@@ -1050,6 +1066,7 @@ function Build-CtrlOne {
         if (Test-Path (Join-Path $dest 'demo-preview')) {
             Copy-Item (Join-Path $dest 'demo-preview') (Join-Path $portable 'demo-preview') -Recurse
         }
+        Copy-CtrlOneStreamDeck -TargetDir $portable
 
         if (-not $SkipZip) {
             $zipPath = Join-Path $dest "CtrlOne-Windows-x64-$Stamp.zip"
@@ -1060,11 +1077,19 @@ function Build-CtrlOne {
 
     if ($WantMac) {
         try {
-            New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'CtrlOne' -BinaryName 'CtrlOne'
+            $macFolders = @(New-MacPortableFolder -Project $csproj -DestRoot $dest -FolderPrefix 'CtrlOne' -BinaryName 'CtrlOne')
+            foreach ($macDir in $macFolders) {
+                Copy-CtrlOneStreamDeck -TargetDir $macDir
+            }
         }
         catch {
             Write-Host "  Mac 건너뜀 (CtrlOne): $($_.Exception.Message)" -ForegroundColor Yellow
         }
+    }
+
+    # Windows 빌드 없이 Mac만 할 때도 dest 루트에 플러그인 문서용 복사
+    if (-not $WantWindows -and $WantMac) {
+        Copy-CtrlOneStreamDeck -TargetDir $dest
     }
 
     Add-Result -Name 'CtrlOne' -Status 'ok' -Portable $portable -Zip $zipPath -Git $git -Extra @{ exe = $(if ($portable) { Join-Path $dest 'CtrlOne.exe' } else { $null }) }

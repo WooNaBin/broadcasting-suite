@@ -3,26 +3,51 @@
     devices: [],
     discovered: [],
     presets: [],
+    actions: [],
   };
+
+  const ACTION_COMMAND_LABELS = {
+    deviceStatus: "상태 확인",
+    play: "재생",
+    record: "녹화",
+    stop: "중지",
+    preview: "미리보기 ON",
+    previewOff: "미리보기 OFF",
+    stream: "OnAir ON",
+    streamOff: "OnAir OFF",
+    recordSpill: "Spill",
+  };
+
+  function isDeviceStatusCommand(command) {
+    return String(command || "").toLowerCase() === "devicestatus";
+  }
 
   const els = {
     grid: document.getElementById("device-grid"),
     selectionList: document.getElementById("selection-list"),
     presetList: document.getElementById("preset-list"),
+    actionList: document.getElementById("action-list"),
     logView: document.getElementById("log-view"),
     connBadge: document.getElementById("conn-badge"),
     addDialog: document.getElementById("add-dialog"),
     renameDialog: document.getElementById("rename-dialog"),
     addressDialog: document.getElementById("address-dialog"),
     presetDialog: document.getElementById("preset-dialog"),
+    actionDialog: document.getElementById("action-dialog"),
     renameForm: document.getElementById("rename-form"),
     addressForm: document.getElementById("address-form"),
     presetForm: document.getElementById("preset-form"),
+    actionForm: document.getElementById("action-form"),
     renameId: document.getElementById("rename-id"),
     renameName: document.getElementById("rename-name"),
     addressId: document.getElementById("address-id"),
     addressValue: document.getElementById("address-value"),
     presetName: document.getElementById("preset-name"),
+    actionId: document.getElementById("action-id"),
+    actionName: document.getElementById("action-name"),
+    actionCommand: document.getElementById("action-command"),
+    actionDeviceList: document.getElementById("action-device-list"),
+    actionDialogTitle: document.getElementById("action-dialog-title"),
     scanBtn: document.getElementById("btn-scan"),
     scanStatus: document.getElementById("scan-status"),
     scanSubnets: document.getElementById("scan-subnets"),
@@ -61,6 +86,11 @@
   connection.on("PresetsUpdated", (presets) => {
     state.presets = normalizePresets(presets);
     renderPresets();
+  });
+
+  connection.on("ActionsUpdated", (actions) => {
+    state.actions = normalizeActions(actions);
+    renderActions();
   });
 
   connection.on("Log", appendLog);
@@ -107,6 +137,10 @@
     els.presetName.focus();
   });
 
+  document.getElementById("btn-new-action").addEventListener("click", () => {
+    openActionEditor(null);
+  });
+
   document.getElementById("add-cancel").addEventListener("click", () => {
     els.addDialog.close("cancel");
   });
@@ -118,6 +152,9 @@
   });
   document.getElementById("preset-cancel").addEventListener("click", () => {
     els.presetDialog.close("cancel");
+  });
+  document.getElementById("action-cancel").addEventListener("click", () => {
+    els.actionDialog.close("cancel");
   });
 
   els.scanBtn.addEventListener("click", () => runScan());
@@ -155,6 +192,34 @@
     } catch (err) {
       showError(err);
     }
+  });
+
+  els.actionDialog.addEventListener("close", async () => {
+    if (els.actionDialog.returnValue !== "ok") return;
+    const name = els.actionName.value.trim();
+    const command = els.actionCommand.value;
+    const idRaw = els.actionId.value.trim();
+    const id = idRaw || null;
+    const deviceIds = isDeviceStatusCommand(command)
+      ? []
+      : [...els.actionDeviceList.querySelectorAll("input[type=checkbox]:checked")].map((el) => el.value);
+    if (!name || !command) {
+      showError(new Error("이름과 명령을 지정하세요."));
+      return;
+    }
+    if (!isDeviceStatusCommand(command) && deviceIds.length === 0) {
+      showError(new Error("이름·명령·장비를 모두 지정하세요."));
+      return;
+    }
+    try {
+      await connection.invoke("SaveAction", id, name, command, deviceIds);
+    } catch (err) {
+      showError(err);
+    }
+  });
+
+  els.actionCommand?.addEventListener("change", () => {
+    refreshActionDevicePicker();
   });
 
   function resetDiscoverUi() {
@@ -216,6 +281,15 @@
       id: p.id ?? p.Id,
       name: p.name ?? p.Name ?? "",
       deviceIds: (p.deviceIds ?? p.DeviceIds ?? []).map(String),
+    }));
+  }
+
+  function normalizeActions(list) {
+    return (list || []).map((a) => ({
+      id: a.id ?? a.Id,
+      name: a.name ?? a.Name ?? "",
+      command: a.command ?? a.Command ?? "record",
+      deviceIds: (a.deviceIds ?? a.DeviceIds ?? []).map(String),
     }));
   }
 
@@ -406,6 +480,7 @@
   function syncUi({ full = false } = {}) {
     renderSelection();
     renderPresets();
+    renderActions();
     if (full || !els.grid.querySelector(".device-card")) renderGrid();
     else state.devices.forEach(patchCard);
   }
@@ -584,6 +659,104 @@
         if (!confirm("이 프리셋을 삭제할까요?")) return;
         try {
           await connection.invoke("DeletePreset", btn.getAttribute("data-preset-delete"));
+        } catch (err) {
+          showError(err);
+        }
+      });
+    });
+  }
+
+  function openActionEditor(action) {
+    els.actionId.value = action?.id || "";
+    els.actionName.value = action?.name || "";
+    els.actionCommand.value = action?.command || "record";
+    els.actionDialogTitle.textContent = action ? "원터치 액션 수정" : "원터치 액션 만들기";
+    refreshActionDevicePicker(action?.deviceIds || []);
+    els.actionDialog.showModal();
+    els.actionName.focus();
+  }
+
+  function refreshActionDevicePicker(selectedIds) {
+    const keepSelection =
+      selectedIds !== undefined
+        ? selectedIds
+        : [...els.actionDeviceList.querySelectorAll("input[type=checkbox]:checked")].map((el) => el.value);
+    const selected = new Set(keepSelection.map(String));
+    if (isDeviceStatusCommand(els.actionCommand.value)) {
+      els.actionDeviceList.innerHTML =
+        `<div class="action-empty">등록된 전체 장비 상태를 로그에 표시합니다. 대상 장비 선택이 필요 없습니다.</div>`;
+      return;
+    }
+    if (!state.devices.length) {
+      els.actionDeviceList.innerHTML =
+        `<div class="action-empty">등록된 장비가 없습니다. 먼저 장비를 추가하세요.</div>`;
+      return;
+    }
+    els.actionDeviceList.innerHTML = state.devices
+      .map(
+        (d) => `
+        <label>
+          <input type="checkbox" value="${escapeHtml(String(d.id))}" ${
+            selected.has(String(d.id)) ? "checked" : ""
+          } />
+          <span>${escapeHtml(d.name)}</span>
+          <span class="dev-meta">${escapeHtml(d.address)}</span>
+        </label>`
+      )
+      .join("");
+  }
+
+  function renderActions() {
+    if (!els.actionList) return;
+    if (!state.actions.length) {
+      els.actionList.innerHTML =
+        `<span class="action-empty">저장된 원터치 액션 없음 — [액션 만들기]로 추가</span>`;
+      return;
+    }
+
+    const nameById = new Map(state.devices.map((d) => [String(d.id), d.name]));
+    els.actionList.innerHTML = state.actions
+      .map((a) => {
+        const cmd = ACTION_COMMAND_LABELS[a.command] || a.command;
+        const names = isDeviceStatusCommand(a.command)
+          ? "전체 장비"
+          : a.deviceIds
+              .map((id) => nameById.get(String(id)) || String(id).slice(0, 8))
+              .join(", ");
+        return `
+      <div class="action-chip">
+        <button type="button" class="action-run" data-action-run="${a.id}" title="실행">
+          <span class="action-run-name">${escapeHtml(a.name)}</span>
+          <span class="action-run-meta">${escapeHtml(cmd)} · ${escapeHtml(names || "장비 없음")}</span>
+        </button>
+        <button type="button" class="action-edit" data-action-edit="${a.id}" title="수정">✎</button>
+        <button type="button" class="action-delete" data-action-delete="${a.id}" title="삭제">✕</button>
+      </div>`;
+      })
+      .join("");
+
+    els.actionList.querySelectorAll("[data-action-run]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await connection.invoke("RunAction", btn.getAttribute("data-action-run"));
+        } catch (err) {
+          showError(err);
+        }
+      });
+    });
+
+    els.actionList.querySelectorAll("[data-action-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const action = state.actions.find((a) => String(a.id) === btn.getAttribute("data-action-edit"));
+        if (action) openActionEditor(action);
+      });
+    });
+
+    els.actionList.querySelectorAll("[data-action-delete]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("이 원터치 액션을 삭제할까요?")) return;
+        try {
+          await connection.invoke("DeleteAction", btn.getAttribute("data-action-delete"));
         } catch (err) {
           showError(err);
         }

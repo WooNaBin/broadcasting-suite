@@ -24,6 +24,7 @@ public sealed class DashboardHub : Hub
         _sessions.ClientConnected();
         await Clients.Caller.SendAsync("DevicesUpdated", _devices.GetSnapshots());
         await Clients.Caller.SendAsync("PresetsUpdated", _devices.GetPresets());
+        await Clients.Caller.SendAsync("ActionsUpdated", _devices.GetActions());
         await Clients.Caller.SendAsync("LogsSnapshot", _devices.GetRecentLogs());
         await base.OnConnectedAsync();
     }
@@ -96,4 +97,13 @@ public sealed class DashboardHub : Hub
 
     public Task ApplyPreset(Guid id) =>
         _devices.ApplyPresetAsync(id);
+
+    public Task SaveAction(Guid? id, string name, string command, List<Guid> deviceIds) =>
+        _devices.SaveActionAsync(id, name, command, deviceIds ?? []);
+
+    public Task DeleteAction(Guid id) =>
+        _devices.DeleteActionAsync(id);
+
+    public Task RunAction(Guid id) =>
+        _devices.RunActionAsync(id);
 }

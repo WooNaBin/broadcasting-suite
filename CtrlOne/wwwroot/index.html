@@ -40,6 +40,17 @@
       </div>
     </section>
 
+    <section class="action-strip" aria-label="원터치 액션">
+      <div class="action-strip-head">
+        <div>
+          <p class="strip-label">원터치 액션</p>
+          <p class="action-help">장비와 명령을 묶어 저장합니다. 버튼·Stream Deck은 이 액션만 실행합니다. CtrlOne이 꺼지면 Stream Deck에서는 오프라인으로 보입니다.</p>
+        </div>
+        <button type="button" id="btn-new-action" class="btn btn-soft">＋ 액션 만들기</button>
+      </div>
+      <div class="action-list" id="action-list"></div>
+    </section>
+
     <main class="device-grid" id="device-grid" aria-live="polite"></main>
 
     <section class="log-panel">
@@ -114,6 +125,40 @@
       </label>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="preset-cancel">취소</button>
+        <button type="submit" value="ok" class="btn btn-primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="action-dialog" class="modal modal-wide">
+    <form method="dialog" id="action-form" class="modal-form">
+      <h2 id="action-dialog-title">원터치 액션</h2>
+      <p class="modal-help">대상 장비와 실행할 명령을 고른 뒤 저장하세요. Stream Deck 플러그인에서도 같은 목록을 씁니다.</p>
+      <input type="hidden" id="action-id" />
+      <label>
+        액션 이름
+        <input id="action-name" type="text" placeholder="메인 녹화 시작" required maxlength="64" />
+      </label>
+      <label>
+        명령
+        <select id="action-command" required>
+          <option value="record">녹화</option>
+          <option value="stop">중지</option>
+          <option value="play">재생</option>
+          <option value="preview">미리보기 ON</option>
+          <option value="previewOff">미리보기 OFF</option>
+          <option value="stream">OnAir ON</option>
+          <option value="streamOff">OnAir OFF</option>
+          <option value="recordSpill">Spill (슬롯 넘김)</option>
+          <option value="deviceStatus">연결 장비 상태 확인</option>
+        </select>
+      </label>
+      <fieldset class="action-device-pick">
+        <legend>대상 장비</legend>
+        <div id="action-device-list" class="action-device-list"></div>
+      </fieldset>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="action-cancel">취소</button>
         <button type="submit" value="ok" class="btn btn-primary">저장</button>
       </div>
     </form>

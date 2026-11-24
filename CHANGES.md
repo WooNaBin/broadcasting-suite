@@ -46,10 +46,61 @@
 - 개별 앱 레포 소스를 이 저장소 하위 폴더로 통합
 - 형제 clone 배치 폐기 — `git clone` 한 번으로 전체 소스 확보
 - `.gitignore`에서 앱 폴더 제외 규칙 제거
+- 로컬에만 있던 CtrlOne 원터치 액션·Stream Deck 작업도 모노레포에 반영
 
 ### 확인
-- [ ] 로컬 폴더 구조·빌드 스크립트 경로
+- [x] 로컬 `BSS_Apps_Suite` pull + CtrlOne 로컬 작업 병합
 - [ ] `Build-BroadcastApps.bat` 빌드
+
+## 2026-10-01 — CtrlOne 데모 원터치 액션 반영
+
+- **스위트:** —
+- **대상:** CtrlOne
+- **유형:** 기타
+
+### 내용
+- `demo.html` / `demo.js`에 원터치 액션 스트립·다이얼로그·저장/실행/수정/삭제 반영 (localStorage, 시드 액션 3개)
+- 실사용과 동일 명령(녹화/중지/재생/미리보기/OnAir/Spill)
+
+### 확인
+- [ ] `demos` 서버에서 `/CtrlOne/wwwroot/demo.html` 확인
+
+---
+
+## 2026-10-01 — CtrlOne Stream Deck 플러그인 배포 패키지 포함
+
+- **스위트:** —
+- **대상:** 빌드스크립트 / CtrlOne / 문서
+- **유형:** 배포
+
+### 내용
+- `Build-BroadcastApps.ps1` / `.sh` — CtrlOne 포터블·zip·Mac 폴더에 `streamdeck/` 복사
+- `Install-StreamDeckPlugin.bat` / `.command` 추가
+- `actions.json` 빌드 시 보존, DEPLOY-CHECKLIST에 Stream Deck 항목
+
+### 확인
+- [ ] `Build-BroadcastApps.ps1 -Apps CtrlOne` 후 `CtrlOne-Windows-x64\streamdeck\` 존재
+
+---
+
+## 2026-09-30 — CtrlOne 원터치 액션 · Stream Deck 연동
+
+- **스위트:** —
+- **대상:** CtrlOne / 문서
+- **유형:** 기능
+
+### 내용
+- 대시보드에서 장비 + 명령(녹화/중지/재생/미리보기/OnAir/Spill)을 묶어 `actions.json` 원터치 액션 저장·실행
+- REST: `GET /api/actions`, `POST /api/actions/{id}/run` (+ health에 actionCount)
+- SignalR: `SaveAction` / `DeleteAction` / `RunAction` / `ActionsUpdated`
+- Stream Deck 플러그인 `CtrlOne/streamdeck/com.ctrlone.actions.sdPlugin` — CtrlOne 기동 시에만 목록 표시, 종료 시 오프라인·재기동 시 재표시 (앱 상주 유지 없음)
+
+### 확인
+- [x] `dotnet build` CtrlOne Debug
+- [ ] 로컬 실행에서 액션 저장·실행
+- [ ] Stream Deck 플러그인 설치 후 오프라인/온라인 전환
+
+---
 
 ## 2026-09-16 — SDM 공문 연결·이름규칙 / WL 인쇄 칸 1~7
 

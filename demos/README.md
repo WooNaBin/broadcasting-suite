@@ -26,7 +26,7 @@ Mac: `python3 -m http.server`
 | SDM | `/ScheduleDataManager/index.html?demo=1` | 일정 보드 |
 | WorkLog | `/WorkLog/www/index.html?demo=1` | 메인 에디터 |
 | FileChecker | `/FileChecker/wwwroot/index.html?demo=1` | 작업 목록 |
-| CtrlOne | `/CtrlOne/wwwroot/demo.html` | 기존 데모 |
+| CtrlOne | `/CtrlOne/wwwroot/demo.html` | 원터치 액션 포함 데모 |
 | ScheduleReader | `/ScheduleReader/schedule_reader/web/static/demo.html` | 샘플 표 |
 
 저장·연결은 브라우저 메모리에만 남고 NAS에는 쓰지 않습니다.

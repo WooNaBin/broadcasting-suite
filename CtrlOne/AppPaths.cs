@@ -24,4 +24,5 @@ public static class AppPaths
 
     public static string DevicesJsonPath => Path.Combine(AppDirectory, "devices.json");
     public static string PresetsJsonPath => Path.Combine(AppDirectory, "presets.json");
+    public static string ActionsJsonPath => Path.Combine(AppDirectory, "actions.json");
 }

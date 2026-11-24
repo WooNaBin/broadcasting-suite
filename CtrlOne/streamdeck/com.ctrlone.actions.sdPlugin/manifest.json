@@ -1,0 +1,35 @@
+{
+  "SDKVersion": 2,
+  "Author": "CtrlOne",
+  "CodePath": "app.html",
+  "PropertyInspectorPath": "pi.html",
+  "Description": "CtrlOne 원터치 액션을 Stream Deck에서 실행합니다. CtrlOne이 실행 중일 때만 동작합니다.",
+  "Name": "CtrlOne Actions",
+  "Icon": "imgs/plugin",
+  "Category": "CtrlOne",
+  "CategoryIcon": "imgs/category",
+  "URL": "http://127.0.0.1:5177/",
+  "Version": "1.0.0",
+  "OS": [
+    { "Platform": "windows", "MinimumVersion": "10" },
+    { "Platform": "mac", "MinimumVersion": "10.15" }
+  ],
+  "Software": {
+    "MinimumVersion": "6.0"
+  },
+  "Actions": [
+    {
+      "Icon": "imgs/action",
+      "Name": "원터치 액션",
+      "States": [
+        {
+          "Image": "imgs/action",
+          "TitleAlignment": "middle",
+          "FontSize": "12"
+        }
+      ],
+      "Tooltip": "CtrlOne에 저장한 원터치 액션을 실행합니다",
+      "UUID": "com.ctrlone.actions.run"
+    }
+  ]
+}

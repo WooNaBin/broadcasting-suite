@@ -238,6 +238,20 @@ EOF
 echo "== CtrlOne =="
 CO_DEST="$OUT/CtrlOne"
 mkdir -p "$CO_DEST"
+
+copy_ctrlone_streamdeck() {
+  local target="$1"
+  local src="$ROOT/CtrlOne/streamdeck"
+  if [[ ! -f "$src/com.ctrlone.actions.sdPlugin/manifest.json" ]]; then
+    echo "  Stream Deck 플러그인 소스 없음 — 건너뜀: $src" >&2
+    return 0
+  fi
+  rm -rf "$target/streamdeck"
+  mkdir -p "$target"
+  cp -R "$src" "$target/streamdeck"
+  echo "  + streamdeck → $target/streamdeck"
+}
+
 if [[ "$WANT_WIN" -eq 1 ]]; then
   CO_STAGE="$CO_DEST/_stage"
   rm -rf "$CO_STAGE"
@@ -251,6 +265,8 @@ if [[ "$WANT_WIN" -eq 1 ]]; then
     cp -R "$CO_STAGE/demo-preview" "$CO_DEST/CtrlOne-Windows-x64/demo-preview"
   fi
   rm -rf "$CO_STAGE"
+  copy_ctrlone_streamdeck "$CO_DEST"
+  copy_ctrlone_streamdeck "$CO_DEST/CtrlOne-Windows-x64"
   zip_dir "$CO_DEST/CtrlOne-Windows-x64" "$CO_DEST/CtrlOne-Windows-x64-$STAMP.zip"
 fi
 if [[ "$WANT_MAC" -eq 1 ]]; then
@@ -261,6 +277,10 @@ if [[ "$WANT_MAC" -eq 1 ]]; then
   else
     package_osx_folder "$ROOT/CtrlOne/CtrlOne.csproj" "$CO_DEST" "CtrlOne" "CtrlOne" || echo "  CtrlOne Mac 건너뜀" >&2
   fi
+  for d in "$CO_DEST"/CtrlOne-macOS-arm64 "$CO_DEST"/CtrlOne-macOS-x64; do
+    [[ -d "$d" ]] && copy_ctrlone_streamdeck "$d"
+  done
+  [[ "$WANT_WIN" -eq 0 ]] && copy_ctrlone_streamdeck "$CO_DEST"
 fi
 
 # --- FileChecker ---

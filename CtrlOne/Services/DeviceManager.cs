@@ -10,22 +10,40 @@ public sealed class DeviceManager : IAsyncDisposable
 {
     private readonly DeviceStore _store;
     private readonly PresetStore _presets;
+    private readonly ActionStore _actions;
     private readonly IHubContext<Hubs.DashboardHub> _hub;
     private readonly ILogger<DeviceManager> _logger;
     private readonly object _sync = new();
     private readonly List<ISequenceDevice> _devices = [];
     private readonly List<SelectionPreset> _selectionPresets = [];
+    private readonly List<OneTouchAction> _oneTouchActions = [];
     private readonly List<string> _recentLogs = [];
     private const int MaxLogEntries = 500;
+
+    /// <summary>기본 원터치: 연결 장비 상태 확인 (장비 없어도 Stream Deck에서 실행 가능).</summary>
+    private static readonly Guid DeviceStatusActionId = Guid.Parse("c7f01e01-5747-4a7a-9e01-000000000001");
+    private const string DeviceStatusActionName = "연결 장비 상태 확인";
+    private const string DeviceStatusCommand = "deviceStatus";
+
+    private static readonly HashSet<string> AllowedActionCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "play", "record", "stop", "preview", "previewOff", "stream", "streamOff", "recordSpill",
+        DeviceStatusCommand
+    };
+
+    private static bool IsDeviceStatusCommand(string command) =>
+        command.Equals(DeviceStatusCommand, StringComparison.OrdinalIgnoreCase);
 
     public DeviceManager(
         DeviceStore store,
         PresetStore presets,
+        ActionStore actions,
         IHubContext<Hubs.DashboardHub> hub,
         ILogger<DeviceManager> logger)
     {
         _store = store;
         _presets = presets;
+        _actions = actions;
         _hub = hub;
         _logger = logger;
     }
@@ -46,11 +64,31 @@ public sealed class DeviceManager : IAsyncDisposable
         {
             _selectionPresets.Clear();
             _selectionPresets.AddRange(_presets.Load());
+            _oneTouchActions.Clear();
+            _oneTouchActions.AddRange(_actions.Load());
+            EnsureDefaultActionsLocked();
         }
 
         await BroadcastStateAsync().ConfigureAwait(false);
         await BroadcastPresetsAsync().ConfigureAwait(false);
+        await BroadcastActionsAsync().ConfigureAwait(false);
         await AppendLogAsync("시스템", $"devices.json에서 {_devices.Count}대 로드 완료").ConfigureAwait(false);
+    }
+
+    /// <summary>장비가 없어도 Stream Deck에서 바로 쓸 기본 원터치를 보장한다.</summary>
+    private void EnsureDefaultActionsLocked()
+    {
+        if (_oneTouchActions.Any(a => a.Id == DeviceStatusActionId))
+            return;
+
+        _oneTouchActions.Insert(0, new OneTouchAction
+        {
+            Id = DeviceStatusActionId,
+            Name = DeviceStatusActionName,
+            Command = DeviceStatusCommand,
+            DeviceIds = []
+        });
+        _actions.Save(_oneTouchActions);
     }
 
     public IReadOnlyList<DeviceSnapshot> GetSnapshots()
@@ -419,6 +457,262 @@ public sealed class DeviceManager : IAsyncDisposable
         await BroadcastStateAsync().ConfigureAwait(false);
     }
 
+    public IReadOnlyList<OneTouchAction> GetActions()
+    {
+        lock (_sync)
+            return _oneTouchActions
+                .Select(CloneAction)
+                .ToList();
+    }
+
+    public OneTouchAction? GetAction(Guid id)
+    {
+        lock (_sync)
+        {
+            var action = _oneTouchActions.FirstOrDefault(a => a.Id == id);
+            return action is null ? null : CloneAction(action);
+        }
+    }
+
+    /// <summary>
+    /// 원터치 액션 저장(같은 Id면 수정, 없으면 추가). 이름 중복 시 기존 Id를 덮어쓴다.
+    /// </summary>
+    public async Task<OneTouchAction> SaveActionAsync(Guid? id, string name, string command, IEnumerable<Guid> deviceIds)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("액션 이름이 필요합니다.", nameof(name));
+        if (string.IsNullOrWhiteSpace(command) || !AllowedActionCommands.Contains(command.Trim()))
+            throw new ArgumentException($"지원하지 않는 명령입니다: {command}", nameof(command));
+
+        name = name.Trim();
+        command = NormalizeCommand(command);
+        var ids = deviceIds?.Distinct().ToList() ?? [];
+        var isStatus = IsDeviceStatusCommand(command);
+        if (!isStatus && ids.Count == 0)
+            throw new InvalidOperationException("대상 장비를 하나 이상 선택하세요.");
+        if (isStatus)
+            ids = [];
+
+        if (ids.Count > 0)
+        {
+            lock (_sync)
+            {
+                var unknown = ids.Where(deviceId => _devices.All(d => d.Id != deviceId)).ToList();
+                if (unknown.Count > 0)
+                    throw new InvalidOperationException("목록에 없는 장비가 포함되어 있습니다.");
+            }
+        }
+
+        OneTouchAction action;
+        lock (_sync)
+        {
+            action = id.HasValue
+                ? _oneTouchActions.FirstOrDefault(a => a.Id == id.Value)
+                  ?? new OneTouchAction { Id = id.Value }
+                : _oneTouchActions.FirstOrDefault(a =>
+                      string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
+                  ?? new OneTouchAction { Id = Guid.NewGuid() };
+
+            action.Name = name;
+            action.Command = command;
+            action.DeviceIds = ids;
+
+            if (_oneTouchActions.All(a => a.Id != action.Id))
+                _oneTouchActions.Add(action);
+
+            _actions.Save(_oneTouchActions);
+        }
+
+        var targetLabel = IsDeviceStatusCommand(action.Command)
+            ? "전체 장비"
+            : $"{ids.Count}대";
+        await AppendLogAsync("시스템", $"원터치 저장: {action.Name} ({action.Command}, {targetLabel})").ConfigureAwait(false);
+        await BroadcastActionsAsync().ConfigureAwait(false);
+        return CloneAction(action);
+    }
+
+    public async Task DeleteActionAsync(Guid id)
+    {
+        string? name;
+        lock (_sync)
+        {
+            var action = _oneTouchActions.FirstOrDefault(a => a.Id == id);
+            if (action is null)
+                return;
+            name = action.Name;
+            _oneTouchActions.Remove(action);
+            _actions.Save(_oneTouchActions);
+        }
+
+        await AppendLogAsync("시스템", $"원터치 삭제: {name}").ConfigureAwait(false);
+        await BroadcastActionsAsync().ConfigureAwait(false);
+    }
+
+    public async Task RunActionAsync(Guid id)
+    {
+        OneTouchAction action;
+        lock (_sync)
+        {
+            var found = _oneTouchActions.FirstOrDefault(a => a.Id == id)
+                        ?? throw new KeyNotFoundException("원터치 액션을 찾을 수 없습니다.");
+            action = CloneAction(found);
+        }
+
+        await AppendLogAsync("시스템", $"원터치 실행: {action.Name} ({action.Command})").ConfigureAwait(false);
+
+        if (IsDeviceStatusCommand(action.Command))
+        {
+            await LogConnectedDeviceStatusAsync().ConfigureAwait(false);
+            return;
+        }
+
+        List<ISequenceDevice> targets;
+        List<string> missing;
+        List<string> offline;
+        lock (_sync)
+        {
+            var registered = _devices.ToDictionary(d => d.Id);
+            missing = action.DeviceIds
+                .Where(deviceId => !registered.ContainsKey(deviceId))
+                .Select(deviceId => deviceId.ToString()[..8])
+                .ToList();
+            offline = action.DeviceIds
+                .Where(deviceId => registered.TryGetValue(deviceId, out var d) && !d.IsConnected)
+                .Select(deviceId => registered[deviceId].Name)
+                .ToList();
+            targets = action.DeviceIds
+                .Where(deviceId => registered.TryGetValue(deviceId, out var d) && d.IsConnected)
+                .Select(deviceId => registered[deviceId])
+                .ToList();
+        }
+
+        if (missing.Count > 0)
+            await AppendLogAsync("시스템", $"원터치 경고: 없는 장비 {missing.Count}대 건너뜀").ConfigureAwait(false);
+        if (offline.Count > 0)
+            await AppendLogAsync("시스템", $"원터치 건너뜀(미연결): {string.Join(", ", offline)}").ConfigureAwait(false);
+
+        if (targets.Count == 0)
+        {
+            await AppendLogAsync("시스템", "원터치: 실행할 연결 장비 없음").ConfigureAwait(false);
+            return;
+        }
+
+        await Task.WhenAll(targets.Select(d => RunCommandOnDeviceAsync(d, action.Command))).ConfigureAwait(false);
+    }
+
+    /// <summary>등록된 장비의 연결·수송 상태를 로그에 남긴다. 장비가 없어도 메시지를 남긴다.</summary>
+    private async Task LogConnectedDeviceStatusAsync()
+    {
+        List<DeviceSnapshot> snaps;
+        lock (_sync)
+            snaps = _devices.OrderBy(d => d.Order).Select(d => d.Snapshot).ToList();
+
+        if (snaps.Count == 0)
+        {
+            await AppendLogAsync("시스템", "연결 장비 상태: 등록된 장비 없음").ConfigureAwait(false);
+            return;
+        }
+
+        var connected = snaps.Count(s => s.IsConnected);
+        var offline = snaps.Count - connected;
+        await AppendLogAsync(
+            "시스템",
+            $"연결 장비 상태 ({snaps.Count}대) — 연결 {connected} / 끊김 {offline}").ConfigureAwait(false);
+
+        foreach (var snap in snaps)
+        {
+            await AppendLogAsync(
+                "시스템",
+                $"[{snap.Name}] {snap.Address} · {DescribeDeviceStatus(snap)}").ConfigureAwait(false);
+        }
+    }
+
+    private static string DescribeDeviceStatus(DeviceSnapshot s)
+    {
+        if (!s.IsConnected)
+            return "연결 끊김";
+        if (!s.Capabilities.CapabilitiesResolved)
+            return "연결됨 · 기능 확인 중";
+
+        var transport = (s.TransportStatus ?? "").Trim().ToLowerInvariant();
+        string mode;
+        if (IsRecordingStatus(transport))
+            mode = "녹화중";
+        else if (transport is "play" or "playing")
+            mode = "재생중";
+        else if (transport is "preview" || s.IsPreviewMode)
+            mode = "미리보기";
+        else if (transport is "stopped" or "stop" or "")
+            mode = "중지";
+        else
+            mode = string.IsNullOrWhiteSpace(s.TransportStatus) ? "알 수 없음" : s.TransportStatus;
+
+        var onAir = s.IsStreaming ? " · OnAir" : "";
+        var slot = s.ActiveSlotId is int slotId ? $" · 슬롯{slotId}" : "";
+        return $"연결됨 · {mode}{onAir}{slot}";
+    }
+
+    private async Task RunCommandOnDeviceAsync(ISequenceDevice device, string command)
+    {
+        switch (command)
+        {
+            case "play":
+                await InvokeTransportAsync(device.Id, "재생", d => d.PlayAsync(), s => RequireCap(s, c => c.CanPlay, "재생")).ConfigureAwait(false);
+                break;
+            case "record":
+                await InvokeTransportAsync(device.Id, "녹화", d => d.RecordAsync(), s => RequireCap(s, c => c.CanRecord, "녹화")).ConfigureAwait(false);
+                break;
+            case "stop":
+                await InvokeTransportAsync(device.Id, "중지", d => d.StopTransportAsync(), s => RequireCap(s, c => c.CanStop, "중지")).ConfigureAwait(false);
+                break;
+            case "preview":
+                await InvokeTransportAsync(device.Id, "미리보기", d => d.PreviewAsync(true), s => RequireCap(s, c => c.CanPreview, "미리보기")).ConfigureAwait(false);
+                break;
+            case "previewOff":
+                await InvokeTransportAsync(device.Id, "출력", d => d.PreviewAsync(false), s => RequireCap(s, c => c.CanPreview, "미리보기")).ConfigureAwait(false);
+                break;
+            case "stream":
+                await InvokeTransportAsync(device.Id, "OnAir 시작", d => d.StreamAsync(true), s => RequireCap(s, c => c.CanStream, "OnAir")).ConfigureAwait(false);
+                break;
+            case "streamOff":
+                await InvokeTransportAsync(device.Id, "OnAir 중지", d => d.StreamAsync(false), s => RequireCap(s, c => c.CanStream, "OnAir")).ConfigureAwait(false);
+                break;
+            case "recordSpill":
+                await InvokeTransportAsync(device.Id, "Spill(슬롯 넘김)", d => d.RecordSpillAsync(), s => RequireCap(s, c => c.CanRecordSpill, "Spill")).ConfigureAwait(false);
+                break;
+            case DeviceStatusCommand:
+                // 장비 단위가 아니라 RunActionAsync에서 일괄 처리
+                break;
+            default:
+                await AppendLogAsync("시스템", $"원터치 알 수 없는 명령: {command}").ConfigureAwait(false);
+                break;
+        }
+    }
+
+    private static string NormalizeCommand(string command) =>
+        command.Trim() switch
+        {
+            var c when c.Equals("play", StringComparison.OrdinalIgnoreCase) => "play",
+            var c when c.Equals("record", StringComparison.OrdinalIgnoreCase) => "record",
+            var c when c.Equals("stop", StringComparison.OrdinalIgnoreCase) => "stop",
+            var c when c.Equals("preview", StringComparison.OrdinalIgnoreCase) => "preview",
+            var c when c.Equals("previewOff", StringComparison.OrdinalIgnoreCase) => "previewOff",
+            var c when c.Equals("stream", StringComparison.OrdinalIgnoreCase) => "stream",
+            var c when c.Equals("streamOff", StringComparison.OrdinalIgnoreCase) => "streamOff",
+            var c when c.Equals("recordSpill", StringComparison.OrdinalIgnoreCase) => "recordSpill",
+            var c when c.Equals(DeviceStatusCommand, StringComparison.OrdinalIgnoreCase) => DeviceStatusCommand,
+            _ => command.Trim()
+        };
+
+    private static OneTouchAction CloneAction(OneTouchAction a) =>
+        new()
+        {
+            Id = a.Id,
+            Name = a.Name,
+            Command = a.Command,
+            DeviceIds = a.DeviceIds.ToList()
+        };
+
     public Task PlayAsync(Guid id) =>
         InvokeTransportAsync(id, "재생", d => d.PlayAsync(), s => RequireCap(s, c => c.CanPlay, "재생"));
     public Task RecordAsync(Guid id) =>
@@ -611,6 +905,11 @@ public sealed class DeviceManager : IAsyncDisposable
     private async Task BroadcastPresetsAsync()
     {
         await _hub.Clients.All.SendAsync("PresetsUpdated", GetPresets()).ConfigureAwait(false);
+    }
+
+    private async Task BroadcastActionsAsync()
+    {
+        await _hub.Clients.All.SendAsync("ActionsUpdated", GetActions()).ConfigureAwait(false);
     }
 
     private static bool IsRecordingStatus(string? status)

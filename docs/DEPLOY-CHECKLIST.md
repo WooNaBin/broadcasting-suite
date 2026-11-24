@@ -55,6 +55,7 @@ BroadcastingApp_<label>\
 
 - [ ] `Windows\CtrlOne-Windows-x64\CtrlOne.exe` → http://127.0.0.1:5177
 - [ ] HyperDeck과 동일 LAN, 원격 제어·포트 9993
+- [ ] (선택) Stream Deck: `CtrlOne-Windows-x64\streamdeck\Install-StreamDeckPlugin.bat` 실행 후 원터치 액션 배치
 
 ## ScheduleReader
 

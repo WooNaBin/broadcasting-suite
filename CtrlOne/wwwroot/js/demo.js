@@ -1,5 +1,16 @@
 (() => {
   const PRESET_KEY = "ctrlone-demo-presets";
+  const ACTION_KEY = "ctrlone-demo-actions";
+  const ACTION_COMMAND_LABELS = {
+    play: "재생",
+    record: "녹화",
+    stop: "중지",
+    preview: "미리보기 ON",
+    previewOff: "미리보기 OFF",
+    stream: "OnAir ON",
+    streamOff: "OnAir OFF",
+    recordSpill: "Spill",
+  };
   const DEMO_POOL = [
     {
       address: "192.168.10.51",
@@ -25,21 +36,30 @@
     devices: createSeedDevices(),
     discovered: [],
     presets: loadPresets(),
+    actions: loadActions(),
   };
 
   const els = {
     grid: document.getElementById("device-grid"),
     selectionList: document.getElementById("selection-list"),
     presetList: document.getElementById("preset-list"),
+    actionList: document.getElementById("action-list"),
     logView: document.getElementById("log-view"),
     addDialog: document.getElementById("add-dialog"),
     renameDialog: document.getElementById("rename-dialog"),
     presetDialog: document.getElementById("preset-dialog"),
+    actionDialog: document.getElementById("action-dialog"),
     renameForm: document.getElementById("rename-form"),
     presetForm: document.getElementById("preset-form"),
+    actionForm: document.getElementById("action-form"),
     renameId: document.getElementById("rename-id"),
     renameName: document.getElementById("rename-name"),
     presetName: document.getElementById("preset-name"),
+    actionId: document.getElementById("action-id"),
+    actionName: document.getElementById("action-name"),
+    actionCommand: document.getElementById("action-command"),
+    actionDeviceList: document.getElementById("action-device-list"),
+    actionDialogTitle: document.getElementById("action-dialog-title"),
     scanBtn: document.getElementById("btn-scan"),
     scanStatus: document.getElementById("scan-status"),
     scanSubnets: document.getElementById("scan-subnets"),
@@ -59,12 +79,18 @@
     els.presetDialog.showModal();
     els.presetName.focus();
   });
+  document.getElementById("btn-new-action").addEventListener("click", () => {
+    openActionEditor(null);
+  });
   document.getElementById("add-cancel").addEventListener("click", () => els.addDialog.close());
   document.getElementById("rename-cancel").addEventListener("click", () =>
     els.renameDialog.close("cancel")
   );
   document.getElementById("preset-cancel").addEventListener("click", () =>
     els.presetDialog.close("cancel")
+  );
+  document.getElementById("action-cancel").addEventListener("click", () =>
+    els.actionDialog.close("cancel")
   );
   els.scanBtn.addEventListener("click", () => runFakeScan());
   els.addSelectedBtn.addEventListener("click", () => addSelectedDevices());
@@ -102,8 +128,49 @@
     renderPresets();
   });
 
+  els.actionDialog.addEventListener("close", () => {
+    if (els.actionDialog.returnValue !== "ok") return;
+    const name = els.actionName.value.trim();
+    const command = els.actionCommand.value;
+    const idRaw = els.actionId.value.trim();
+    const deviceIds = [...els.actionDeviceList.querySelectorAll("input[type=checkbox]:checked")].map(
+      (el) => el.value
+    );
+    if (!name || !command || deviceIds.length === 0) {
+      appendLog("[데모] 원터치 저장 실패: 이름·명령·장비를 모두 지정하세요.");
+      return;
+    }
+    const byName = state.actions.find(
+      (a) => a.name.toLowerCase() === name.toLowerCase() && (!idRaw || a.id !== idRaw)
+    );
+    let action;
+    if (idRaw) {
+      action = state.actions.find((a) => a.id === idRaw);
+    }
+    if (!action && byName) {
+      action = byName;
+    }
+    if (action) {
+      action.name = name;
+      action.command = command;
+      action.deviceIds = deviceIds;
+    } else {
+      action = {
+        id: idRaw || `action-${Date.now()}`,
+        name,
+        command,
+        deviceIds,
+      };
+      state.actions.push(action);
+    }
+    saveActions();
+    appendLog(`[데모] 원터치 저장: ${action.name} (${ACTION_COMMAND_LABELS[command] || command}, ${deviceIds.length}대)`);
+    renderActions();
+  });
+
   appendLog("[데모] 레이아웃 미리보기 모드입니다. HyperDeck TCP 연결은 사용하지 않습니다.");
   appendLog("[데모] 가상 장비 4대가 Connected 상태로 표시됩니다.");
+  appendLog(`[데모] 원터치 액션 ${state.actions.length}개 로드됨.`);
   render();
   startDemoTick();
 
@@ -265,6 +332,44 @@
     localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets));
   }
 
+  function seedActions() {
+    return [
+      {
+        id: "action-demo-record",
+        name: "메인 녹화 시작",
+        command: "record",
+        deviceIds: ["demo-1", "demo-2"],
+      },
+      {
+        id: "action-demo-stop",
+        name: "카메라 일괄 중지",
+        command: "stop",
+        deviceIds: ["demo-1", "demo-2", "demo-3"],
+      },
+      {
+        id: "action-demo-onair",
+        name: "Rack OnAir",
+        command: "stream",
+        deviceIds: ["demo-3"],
+      },
+    ];
+  }
+
+  function loadActions() {
+    try {
+      const raw = localStorage.getItem(ACTION_KEY);
+      if (raw === null) return seedActions();
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : seedActions();
+    } catch {
+      return seedActions();
+    }
+  }
+
+  function saveActions() {
+    localStorage.setItem(ACTION_KEY, JSON.stringify(state.actions));
+  }
+
   function isRecording(status) {
     const value = String(status || "").trim().toLowerCase();
     return value === "record" || value === "recording";
@@ -273,6 +378,7 @@
   function render() {
     renderSelection();
     renderPresets();
+    renderActions();
     renderGrid();
   }
 
@@ -359,6 +465,181 @@
         renderPresets();
       });
     });
+  }
+
+  function openActionEditor(action) {
+    els.actionId.value = action?.id || "";
+    els.actionName.value = action?.name || "";
+    els.actionCommand.value = action?.command || "record";
+    els.actionDialogTitle.textContent = action ? "원터치 액션 수정" : "원터치 액션 만들기";
+    const selected = new Set((action?.deviceIds || []).map(String));
+    if (!state.devices.length) {
+      els.actionDeviceList.innerHTML =
+        `<div class="action-empty">등록된 장비가 없습니다. 먼저 장비를 추가하세요.</div>`;
+    } else {
+      els.actionDeviceList.innerHTML = state.devices
+        .map(
+          (d) => `
+        <label>
+          <input type="checkbox" value="${escapeHtml(String(d.id))}" ${
+            selected.has(String(d.id)) ? "checked" : ""
+          } />
+          <span>${escapeHtml(d.name)}</span>
+          <span class="dev-meta">${escapeHtml(d.address)}</span>
+        </label>`
+        )
+        .join("");
+    }
+    els.actionDialog.showModal();
+    els.actionName.focus();
+  }
+
+  function renderActions() {
+    if (!els.actionList) return;
+    if (!state.actions.length) {
+      els.actionList.innerHTML =
+        `<span class="action-empty">저장된 원터치 액션 없음 — [액션 만들기]로 추가</span>`;
+      return;
+    }
+
+    const nameById = new Map(state.devices.map((d) => [String(d.id), d.name]));
+    els.actionList.innerHTML = state.actions
+      .map((a) => {
+        const cmd = ACTION_COMMAND_LABELS[a.command] || a.command;
+        const names = (a.deviceIds || [])
+          .map((id) => nameById.get(String(id)) || String(id).slice(0, 8))
+          .join(", ");
+        return `
+      <div class="action-chip">
+        <button type="button" class="action-run" data-action-run="${a.id}" title="실행">
+          <span class="action-run-name">${escapeHtml(a.name)}</span>
+          <span class="action-run-meta">${escapeHtml(cmd)} · ${escapeHtml(names || "장비 없음")}</span>
+        </button>
+        <button type="button" class="action-edit" data-action-edit="${a.id}" title="수정">✎</button>
+        <button type="button" class="action-delete" data-action-delete="${a.id}" title="삭제">✕</button>
+      </div>`;
+      })
+      .join("");
+
+    els.actionList.querySelectorAll("[data-action-run]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        runDemoAction(btn.getAttribute("data-action-run"));
+      });
+    });
+
+    els.actionList.querySelectorAll("[data-action-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const action = state.actions.find(
+          (a) => String(a.id) === btn.getAttribute("data-action-edit")
+        );
+        if (action) openActionEditor(action);
+      });
+    });
+
+    els.actionList.querySelectorAll("[data-action-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!confirm("이 원터치 액션을 삭제할까요?")) return;
+        const id = btn.getAttribute("data-action-delete");
+        const removed = state.actions.find((a) => a.id === id);
+        state.actions = state.actions.filter((a) => a.id !== id);
+        saveActions();
+        appendLog(`[데모] 원터치 삭제: ${removed?.name || id}`);
+        renderActions();
+      });
+    });
+  }
+
+  function runDemoAction(id) {
+    const action = state.actions.find((a) => a.id === id);
+    if (!action) {
+      appendLog("[데모] 원터치 액션을 찾을 수 없습니다.");
+      return;
+    }
+
+    const registered = new Map(state.devices.map((d) => [d.id, d]));
+    const missing = (action.deviceIds || []).filter((deviceId) => !registered.has(deviceId));
+    const offline = (action.deviceIds || [])
+      .map((deviceId) => registered.get(deviceId))
+      .filter((d) => d && !d.isConnected);
+    const targets = (action.deviceIds || [])
+      .map((deviceId) => registered.get(deviceId))
+      .filter((d) => d && d.isConnected);
+
+    appendLog(
+      `[데모] 원터치 실행: ${action.name} (${ACTION_COMMAND_LABELS[action.command] || action.command})`
+    );
+    if (missing.length)
+      appendLog(`[데모] 원터치 경고: 없는 장비 ${missing.length}대 건너뜀`);
+    if (offline.length)
+      appendLog(
+        `[데모] 원터치 건너뜀(미연결): ${offline.map((d) => d.name).join(", ")}`
+      );
+    if (!targets.length) {
+      appendLog("[데모] 원터치: 실행할 연결 장비 없음");
+      return;
+    }
+
+    targets.forEach((device) => applyCommandToDevice(device, action.command));
+  }
+
+  function applyCommandToDevice(device, command) {
+    switch (command) {
+      case "play":
+        device.transportStatus = "play";
+        device.isPreviewMode = false;
+        appendLog(`[데모] Tx: play → ${device.name}`);
+        break;
+      case "record":
+        device.transportStatus = "record";
+        device.isPreviewMode = false;
+        appendLog(`[데모] Tx: record → ${device.name}`);
+        break;
+      case "stop":
+        device.transportStatus = "stopped";
+        device.isPreviewMode = false;
+        appendLog(`[데모] Tx: stop → ${device.name}`);
+        break;
+      case "preview":
+        device.isPreviewMode = true;
+        device.transportStatus = "preview";
+        appendLog(`[데모] Tx: preview: enable: true → ${device.name}`);
+        break;
+      case "previewOff":
+        device.isPreviewMode = false;
+        device.transportStatus = "stopped";
+        appendLog(`[데모] Tx: preview: enable: false → ${device.name}`);
+        break;
+      case "stream":
+        device.isStreaming = true;
+        appendLog(`[데모] Tx: stream: enable: true → ${device.name}`);
+        break;
+      case "streamOff":
+        device.isStreaming = false;
+        appendLog(`[데모] Tx: stream: enable: false → ${device.name}`);
+        break;
+      case "recordSpill": {
+        if (!isRecording(device.transportStatus)) {
+          appendLog(`[데모] Spill 거부: 녹화 중이 아님 → ${device.name}`);
+          break;
+        }
+        const from = device.activeSlotId || 1;
+        const to = from === 1 ? 2 : 1;
+        const target = to === 1 ? device.slot1 : device.slot2;
+        if (!target || target.status !== "mounted") {
+          appendLog(`[데모] Spill 실패: 슬롯 ${to}가 mounted 아님 → ${device.name}`);
+          break;
+        }
+        device.activeSlotId = to;
+        if (device.slot1) device.slot1.isActive = to === 1;
+        if (device.slot2) device.slot2.isActive = to === 2;
+        appendLog(`[데모] Tx: record spill → ${device.name} (슬롯 ${from} → ${to})`);
+        break;
+      }
+      default:
+        appendLog(`[데모] 원터치 알 수 없는 명령: ${command}`);
+        return;
+    }
+    patchDemoCard(device);
   }
 
   function renderGrid() {
