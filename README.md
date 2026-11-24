@@ -1,5 +1,8 @@
 # Broadcasting suite
 
+> **Canonical host repo:** [WooNaBin/AppBSS](https://github.com/WooNaBin/AppBSS) (ex-BackendBSS).  
+> Server/suite sources live there as `suite/apps/broadcasting-suite`. Prefer AppBSS for deploy. This repo stays for desktop builds; archive optional — do not force-delete without noting.
+
 방송실 프로그램 **모노레포**입니다.  
 문서·TODO·일괄 빌드·버전과 **앱 소스**를 이 저장소 하나에서 관리합니다.
 
